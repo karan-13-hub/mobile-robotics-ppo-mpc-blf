@@ -14,18 +14,32 @@ safety tube.
 
 ## Results (20 seeds, deterministic eval, default flags)
 
-| metric                                | PPO only | PPO + MPC-BLF |
-| :------------------------------------ | -------: | ------------: |
-| Crash rate                            |  ~0.0 %  |      0.00 %   |
-| Goal reach rate (15 cm tol.)          | 100.00 % |    100.00 %   |
-| Position tracking RMSE  [m]           |   0.135  |     **0.092** |
-| Tube violation rate (‖e‖ > 15 cm)     |  ~12 %   |    **1.19 %** |
-| Peak tracking error [m]               |   0.19   |    **0.132**  |
-| MPC median / peak solve time [ms]     |     –    |    39 / 121   |
-| MPC fallback rate                     |     –    |     0.52 %    |
+| metric                                | PPO only   | PPO + MPC-BLF |
+| :------------------------------------ | ---------: | ------------: |
+| Crash rate                            |    0.00 %  |      0.00 %   |
+| Goal reach rate (15 cm tol.)          |  100.00 %  |    100.00 %   |
+| Position tracking RMSE  [m]           |    0.1443  |    **0.0861** |
+| Velocity tracking RMSE  [m/s]         |    0.1599  |      0.1742   |
+| End-effector tracking RMSE [m]        |    0.2243  |      0.1989   |
+| Final settling error [m]              |    0.0613  |      0.0756   |
+| Tube violation rate (‖e‖ > 15 cm)     |   40.72 %  |    **0.94 %** |
+| Peak tracking error [m]               |    0.2192  |    **0.1323** |
+| Median solve time [ms]                |    0.91    |     39.91     |
+| Peak   solve time [ms]                |    6.86    |    119.25     |
+| MPC active rate (NLP actually solved) |      –     |     33.39 %   |
+| MPC fallback rate                     |      –     |      0.62 %   |
 
-The filter cuts tube violations by ~10× and peak error by ~30 % with essentially
-zero fallback to the unfiltered PPO command.
+The filter cuts tube violations by **~43×** (40.72 % → 0.94 %) and peak tracking
+error by **~40 %** (0.22 m → 0.13 m), while also tightening the mean position
+RMSE by ~40 %, all with a sub-1 % fallback rate to the unfiltered PPO command.
+The added cost is a ~40 ms median solve once every 3 env steps (≈33 % duty
+cycle); between solves the raw PPO command is applied directly.
+
+<sub>* The baseline PPO peak of ~113 ms is a **one-off warm-up** on the very
+first `model.predict` call (PyTorch lazy module init, CUDA kernel JIT /
+allocator setup); steady-state inference is ~0.9 ms, which is why the median
+is ~120× smaller than the peak. The MPC peak is instead a *typical* worst-case
+NLP solve.</sub>
 
 ## Repository layout
 

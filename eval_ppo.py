@@ -29,6 +29,7 @@ if "MUJOCO_GL" not in os.environ and not os.environ.get("DISPLAY"):
     os.environ["MUJOCO_GL"] = "egl"
 
 import argparse
+import time
 import numpy as np
 import mujoco
 from stable_baselines3 import PPO
@@ -136,6 +137,7 @@ def rollout_episode(env, model, seed=None, renderer=None, camera="track",
         "vel_err": [],
         "ee_err": [],
         "goal_dist": [],
+        "policy_ms": [],
     }
     frames = [] if renderer is not None else None
     crashed = False
@@ -159,7 +161,9 @@ def rollout_episode(env, model, seed=None, renderer=None, camera="track",
         frames.append(renderer.render().copy())
 
     while not done:
+        t0 = time.perf_counter()
         action, _ = model.predict(obs, deterministic=True)
+        policy_ms = (time.perf_counter() - t0) * 1e3
         obs, _, terminated, truncated, info = env.step(action)
         step_idx += 1
 
@@ -174,6 +178,7 @@ def rollout_episode(env, model, seed=None, renderer=None, camera="track",
         log["vel_err"].append(info["vel_error"])
         log["ee_err"].append(info["ee_error"])
         log["goal_dist"].append(info["goal_dist"])
+        log["policy_ms"].append(policy_ms)
 
         if renderer is not None and (step_idx % frame_stride == 0):
             renderer.update_scene(env.data, camera=camera)
@@ -211,7 +216,7 @@ def save_video(frames, path, fps):
     print(f"Saved video to {path} ({len(frames)} frames at {fps} fps)")
 
 
-def episode_metrics(log, meta, goal_tol=0.15):
+def episode_metrics(log, meta, goal_tol=0.15, tube=0.15):
     """Reduce a per-step log to scalar metrics for one episode."""
     T_traj = meta["T_traj"]
     # Restrict tracking metrics to the actual trajectory window; the post-T_traj
@@ -223,6 +228,17 @@ def episode_metrics(log, meta, goal_tol=0.15):
     pos_rmse = float(np.sqrt(np.mean(log["pos_err"][in_traj] ** 2)))
     vel_rmse = float(np.sqrt(np.mean(log["vel_err"][in_traj] ** 2)))
     ee_rmse = float(np.sqrt(np.mean(log["ee_err"][in_traj] ** 2)))
+
+    # Tube / peak-error diagnostics use the same window as the MPC-BLF eval:
+    # the tracking phase (t <= T_traj), so pure hover regulation isn't mixed in.
+    e_norm = log["pos_err"][in_traj]
+    tube_violation_rate = float(np.mean(e_norm > tube)) if e_norm.size else 0.0
+    peak_err = float(np.max(e_norm)) if e_norm.size else 0.0
+
+    # Policy inference time == plain-PPO analogue of MPC solve time.
+    policy_ms = log["policy_ms"]
+    median_solve_ms = float(np.median(policy_ms)) if policy_ms.size else 0.0
+    max_solve_ms = float(np.max(policy_ms)) if policy_ms.size else 0.0
 
     final_goal_dist = float(log["goal_dist"][-1])
     reached_goal = (not meta["crashed"]) and (final_goal_dist < goal_tol)
@@ -236,6 +252,10 @@ def episode_metrics(log, meta, goal_tol=0.15):
         "crashed": meta["crashed"],
         "T_traj": T_traj,
         "ep_len_s": float(log["t"][-1]),
+        "tube_violation_rate": tube_violation_rate,
+        "peak_err": peak_err,
+        "median_solve_ms": median_solve_ms,
+        "max_solve_ms": max_solve_ms,
     }
 
 
@@ -317,6 +337,9 @@ def main():
     parser.add_argument("--episodes", type=int, default=20)
     parser.add_argument("--goal-tol", type=float, default=0.15,
                         help="‖p − goal‖ tolerance to count as reached")
+    parser.add_argument("--tube", type=float, default=0.15,
+                        help="Tracking tube radius [m]; reports %% of steps with "
+                             "‖p − p_ref‖ > tube (matches eval_ppo_mpc's --tube)")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--plot", action="store_true",
                         help="Plot a single episode after evaluation")
@@ -358,6 +381,13 @@ def main():
         renderer = mujoco.Renderer(env.model, height=args.video_height,
                                    width=args.video_width, max_geom=20000)
 
+    # Warm up the policy so the first measured `model.predict` isn't polluted
+    # by PyTorch lazy module init / CUDA context creation (easily ~100 ms on
+    # the first call, which would then dominate the reported peak solve time).
+    warmup_obs, _ = env.reset(seed=rng_seed)
+    for _ in range(3):
+        model.predict(warmup_obs, deterministic=True)
+
     print(f"Running {args.episodes} deterministic episodes...")
     for ep in range(args.episodes):
         record_this = (renderer is not None) and (ep == video_episode)
@@ -368,7 +398,7 @@ def main():
             camera=args.video_camera,
             frame_stride=args.video_stride,
         )
-        m = episode_metrics(log, meta, goal_tol=args.goal_tol)
+        m = episode_metrics(log, meta, goal_tol=args.goal_tol, tube=args.tube)
         metrics.append(m)
 
         if ep == args.plot_episode:
@@ -384,7 +414,10 @@ def main():
             f"  ep {ep:02d} | T={m['T_traj']:.2f}s len={m['ep_len_s']:.2f}s "
             f"| pos_RMSE={m['pos_rmse']:.3f} vel_RMSE={m['vel_rmse']:.3f} "
             f"ee_RMSE={m['ee_rmse']:.3f} | final_d={m['final_goal_dist']:.3f} "
-            f"| {status}"
+            f"| {status} "
+            f"| tube_viol={100*m['tube_violation_rate']:.1f}% "
+            f"peak_e={m['peak_err']:.3f} "
+            f"solve={m['median_solve_ms']:.2f}/{m['max_solve_ms']:.2f}ms"
         )
 
     n = len(metrics)
@@ -394,15 +427,23 @@ def main():
     mean_vel = np.mean([m["vel_rmse"] for m in metrics])
     mean_ee = np.mean([m["ee_rmse"] for m in metrics])
     mean_final = np.mean([m["final_goal_dist"] for m in metrics])
+    mean_tube_viol = 100.0 * np.mean([m["tube_violation_rate"] for m in metrics])
+    mean_peak = np.mean([m["peak_err"] for m in metrics])
+    median_solve_ms = float(np.median([m["median_solve_ms"] for m in metrics]))
+    peak_solve_ms = float(np.max([m["max_solve_ms"] for m in metrics]))
 
     print("\n--- Baseline PPO (trajectory-tracking) Metrics ---")
-    print(f"Episodes                         : {n}")
-    print(f"Crash rate                       : {crash_rate:.2f}%")
-    print(f"Goal reach rate (tol={args.goal_tol:.2f} m): {reach_rate:.2f}%")
-    print(f"Position tracking RMSE  [m]      : {mean_pos:.4f}")
-    print(f"Velocity tracking RMSE  [m/s]    : {mean_vel:.4f}")
-    print(f"End-effector tracking RMSE [m]   : {mean_ee:.4f}")
-    print(f"Final settling error    [m]      : {mean_final:.4f}")
+    print(f"Episodes                            : {n}")
+    print(f"Crash rate                          : {crash_rate:.2f}%")
+    print(f"Goal reach rate (tol={args.goal_tol:.2f} m)   : {reach_rate:.2f}%")
+    print(f"Position tracking RMSE  [m]         : {mean_pos:.4f}")
+    print(f"Velocity tracking RMSE  [m/s]       : {mean_vel:.4f}")
+    print(f"End-effector tracking RMSE [m]      : {mean_ee:.4f}")
+    print(f"Final settling error    [m]         : {mean_final:.4f}")
+    print(f"Tube violation rate (||e|| > {args.tube*100:.1f} cm) : {mean_tube_viol:.2f}%")
+    print(f"Peak tracking error     [m]         : {mean_peak:.4f}")
+    print(f"Policy median solve time [ms]       : {median_solve_ms:.2f}")
+    print(f"Policy peak   solve time [ms]       : {peak_solve_ms:.2f}")
 
     if args.plot and plot_log is not None:
         plot_episode(plot_log, plot_meta, save_path=args.save_plot)
