@@ -13,6 +13,8 @@
   <style>
     :root {
       --accent: #2c6df5;
+      --accent2: #10b981;
+      --warn: #b42318;
       --muted: #6b7280;
       --ink:   #1f2937;
       --bg:    #ffffff;
@@ -33,15 +35,28 @@
     }
     .reveal h1 { font-size: 2.0em; }
     .reveal h2 { font-size: 1.5em; }
-    .reveal h3 { font-size: 1.1em; color: var(--muted); font-weight: 500; margin-bottom: 0.6em; }
-    .reveal p, .reveal li { font-size: 0.80em; line-height: 1.4; }
+    .reveal h3 { font-size: 1.05em; color: var(--muted); font-weight: 500; margin-bottom: 0.5em; }
+    .reveal p, .reveal li { font-size: 0.78em; line-height: 1.4; }
     .reveal ul { margin-left: 1.1em; }
     .reveal li + li { margin-top: 0.25em; }
     .reveal code { background: var(--soft); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
     .reveal pre { font-size: 0.55em; box-shadow: none; border: 1px solid var(--line); border-radius: 6px; }
-    .reveal .accent { color: var(--accent); }
-    .reveal .muted  { color: var(--muted); }
+    .reveal .accent  { color: var(--accent); }
+    .reveal .accent2 { color: var(--accent2); }
+    .reveal .muted   { color: var(--muted); }
     .reveal hr { border: 0; border-top: 1px solid var(--line); margin: 0.8em 0; }
+
+    /* MathJax sizing */
+    .reveal mjx-container { font-size: 0.95em !important; }
+    .reveal mjx-container[display="true"] { margin: 0.35em 0 !important; }
+    .eq-block {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin: 10px 0;
+    }
+    .eq-block .label { font-size: 0.65em; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; }
 
     .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
     .cols.tight { gap: 20px; }
@@ -85,13 +100,24 @@
       border-radius: 6px;
       border: 1px solid var(--line);
       display: block;
+      background: #000;
     }
+    img.fit { background: #fff; }
 
-    .stat-row { display: flex; gap: 24px; margin-top: 8px; flex-wrap: wrap; }
+    .figure {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px 6px;
+      background: #fff;
+    }
+    .figure svg { display: block; width: 100%; height: auto; }
+    .figure .fcaption { font-size: 0.55em; color: var(--muted); margin-top: 4px; padding: 0 2px; }
+
+    .stat-row { display: flex; gap: 20px; margin-top: 8px; flex-wrap: wrap; }
     .stat {
       border-left: 3px solid var(--accent);
       padding: 2px 14px;
-      min-width: 120px;
+      min-width: 110px;
     }
     .stat .val { font-size: 1.4em; font-weight: 700; line-height: 1; color: var(--ink); }
     .stat .lab { font-size: 0.60em; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
@@ -108,27 +134,30 @@
     .tag.win { background: #eef3ff; color: var(--accent); }
     .tag.bad { background: #fde8e8; color: #b42318; }
 
-    .footer {
-      position: absolute;
-      bottom: 18px; left: 40px; right: 40px;
-      display: flex; justify-content: space-between;
-      color: var(--muted); font-size: 0.55em;
-      border-top: 1px solid var(--line);
-      padding-top: 8px;
-    }
-
     .reveal .progress { color: var(--accent); }
-
-    pre.ascii {
-      background: var(--soft);
-      border: 1px solid var(--line);
-      font-family: "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
-      font-size: 0.55em;
-      padding: 12px 14px;
-      border-radius: 6px;
-      white-space: pre;
-    }
   </style>
+
+  <!-- MathJax for real LaTeX -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$','$'], ['\\(','\\)']],
+        displayMath: [['$$','$$'], ['\\[','\\]']],
+        packages: { '[+]': ['boldsymbol', 'color'] }
+      },
+      svg: { fontCache: 'global' },
+      startup: {
+        ready: () => {
+          MathJax.startup.defaultReady();
+          // Re-typeset whenever Reveal swaps slide DOM.
+          if (window.Reveal) {
+            Reveal.on('slidechanged', () => MathJax.typesetPromise());
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
 </head>
 <body>
 
@@ -164,9 +193,9 @@
             <li>Base: <b>Skydio X2</b> quadrotor. Payload: <b>3-DoF arm</b> → time-varying
               mass distribution and COM offset.</li>
             <li>Task: follow a randomly-sampled <b>7<sup>th</sup>-order min-snap</b>
-              trajectory to a 15 cm goal tolerance, then hover.</li>
+              trajectory to a 15&nbsp;cm goal tolerance, then hover.</li>
             <li>PPO alone tracks well <i>on average</i> but transient peaks blow
-              past the safety tube and a folded arm can crash it outright.</li>
+              past the safety tube, and a folded arm can crash it outright.</li>
             <li>We want the learned reactivity <b>and</b> a provable envelope —
               without retraining the policy.</li>
           </ul>
@@ -178,9 +207,9 @@
           </div>
         </div>
         <div>
-          <video src="../videos/ppo_7M_demo.mp4" muted autoplay loop playsinline></video>
+          <video src="videos/ppo_7M_demo.mp4" muted autoplay loop playsinline controls></video>
           <div class="media-caption">PPO-only (7 M steps) — visually clean but lateral
-            excursions cross the 12&nbsp;cm tube ~40% of the time.</div>
+            excursions cross the 12&nbsp;cm tube $\sim\!40\%$ of the time.</div>
         </div>
       </div>
     </section>
@@ -193,119 +222,470 @@
         <div>
           <h3>① Lateral tube violations</h3>
           <p>During aggressive min-snap segments PPO peaks at <b>22&nbsp;cm</b> lateral
-            error — 83% bigger than our 12&nbsp;cm corridor.</p>
+            error &mdash; 83% bigger than our 12&nbsp;cm corridor.</p>
         </div>
         <div>
           <h3>② Wind gusts</h3>
           <p>A 2.5&nbsp;N lateral pulse (wind-high) drives the baseline into a
-            <b>52&nbsp;cm</b> post-pulse swing; it never settles within 10 s.</p>
+            <b>52&nbsp;cm</b> post-pulse swing; it never settles within 10&nbsp;s.</p>
         </div>
         <div>
           <h3>③ Arm folding (COM shift)</h3>
-          <p>Holding the arm at <code>[0, −1.5, 1.5]</code> rad shifts the COM off-axis.
-            PPO <b>crashes</b> after ~12 s; it was never trained on this.</p>
+          <p>Holding the arm at $[\,0,\,-1.5,\,1.5\,]$ rad shifts the COM off-axis.
+            PPO <b>crashes</b> after $\sim\!12$ s; it was never trained on this.</p>
         </div>
       </div>
       <hr />
       <p class="muted">
-        Goal: keep the base-position error strictly inside a
-        <code>δ</code>-tube at every control step, <i>and</i> stay
-        close to PPO whenever PPO is already safe.
+        Goal: keep the base-position error strictly inside a $\delta$-tube at every
+        control step,
+        $\;\|\mathbf{p}(t)-\mathbf{p}^{\star}(t)\|<\delta\;\forall t\;$,
+        <i>and</i> stay close to PPO whenever PPO is already safe.
       </p>
     </section>
 
-    <!-- ======================================================= Approach 1 -->
+    <!-- ======================================================= Approach 1 — Architecture figure -->
     <section>
       <span class="kicker">2 · Approach</span>
       <h2>Architecture: PPO proposes, MPC-BLF filters</h2>
-<pre class="ascii">
- reference            PPO policy              MPC-BLF filter          MuJoCo
-  min-snap     ─▶  (learned, reactive)  ─▶  (model-based, safe)  ─▶   simulation
-  (p*, v*)           u_ppo ∈ R⁷              u_safe ∈ R⁷              12-state
-</pre>
-      <div class="cols tight">
+
+      <div class="figure">
+        <svg viewBox="0 0 1100 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PPO to MPC-BLF pipeline">
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5"
+                    markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#1f2937"/>
+            </marker>
+            <style><![CDATA[
+              .box      { fill:#fff; stroke:#1f2937; stroke-width:1.5; }
+              .box.ppo  { fill:#eef3ff; stroke:#2c6df5; }
+              .box.mpc  { fill:#ecfdf5; stroke:#10b981; }
+              .box.sim  { fill:#fef3c7; stroke:#b45309; }
+              .title    { font: 600 15px "Inter", sans-serif; fill:#1f2937; }
+              .sub      { font: 12px "Inter", sans-serif;      fill:#6b7280; }
+              .sig      { font: 13px "JetBrains Mono", monospace; fill:#1f2937; }
+              .sig.blue { fill:#2c6df5; }
+              .sig.grn  { fill:#10b981; }
+              .sig.red  { fill:#b42318; }
+              .edge     { stroke:#1f2937; stroke-width:1.5; fill:none; }
+              .edge.blue{ stroke:#2c6df5; }
+              .edge.grn { stroke:#10b981; }
+            ]]></style>
+          </defs>
+
+          <!-- reference source -->
+          <rect class="box"  x="20"  y="70"  width="170" height="80" rx="10" />
+          <text class="title" x="105" y="100" text-anchor="middle">Reference</text>
+          <text class="sub"   x="105" y="120" text-anchor="middle">min-snap polynomial</text>
+          <text class="sig"   x="105" y="140" text-anchor="middle">p*(t), v*(t)</text>
+
+          <!-- PPO -->
+          <rect class="box ppo" x="240" y="30" width="200" height="80" rx="10" />
+          <text class="title" x="340" y="58" text-anchor="middle">PPO policy</text>
+          <text class="sub"   x="340" y="78" text-anchor="middle">learned, reactive (MLP)</text>
+          <text class="sig blue" x="340" y="98" text-anchor="middle">π_θ(o_t) → u_ppo ∈ ℝ⁷</text>
+
+          <!-- MPC-BLF -->
+          <rect class="box mpc" x="490" y="30" width="250" height="80" rx="10" />
+          <text class="title" x="615" y="58" text-anchor="middle">MPC-BLF filter</text>
+          <text class="sub"   x="615" y="78" text-anchor="middle">model-based, safe (CasADi)</text>
+          <text class="sig grn" x="615" y="98" text-anchor="middle">argmin ‖U₀ − u_ppo‖² s.t. BLF</text>
+
+          <!-- MuJoCo -->
+          <rect class="box sim" x="790" y="30" width="200" height="80" rx="10" />
+          <text class="title" x="890" y="58" text-anchor="middle">MuJoCo</text>
+          <text class="sub"   x="890" y="78" text-anchor="middle">12-state quadrotor + arm</text>
+          <text class="sig"   x="890" y="98" text-anchor="middle">x_{t+1} = f(x_t, u_t)</text>
+
+          <!-- arrows -->
+          <path class="edge"      d="M190,110 C215,110 215,70 240,70"        marker-end="url(#arr)" />
+          <path class="edge blue" d="M440,70  L490,70"                        marker-end="url(#arr)" />
+          <path class="edge grn"  d="M740,70  L790,70"                        marker-end="url(#arr)" />
+          <path class="edge"      d="M190,110 C215,110 400,110 490,90"        marker-end="url(#arr)" />
+
+          <!-- feedback loop -->
+          <path class="edge" d="M890,110 L890,180 L615,180 L615,110" stroke-dasharray="6 4" marker-end="url(#arr)" />
+          <text class="sub" x="752" y="200">state feedback  x_t</text>
+
+          <!-- signal labels -->
+          <text class="sig blue" x="465" y="58">u_ppo</text>
+          <text class="sig grn"  x="762" y="58">u_safe</text>
+          <text class="sig"      x="205" y="98">(o_t)</text>
+        </svg>
+        <div class="fcaption">PPO reacts at every 10 ms env step; the MPC-BLF NLP is solved on
+          a <b>receding horizon</b> and returns the safe rotor command closest to $u_{\mathrm{ppo}}$.
+          Arm joint commands pass through unchanged.</div>
+      </div>
+
+      <div class="cols tight" style="margin-top: 14px;">
         <div>
-          <h3>PPO — reactive layer</h3>
+          <h3 class="accent">PPO — reactive layer</h3>
           <ul>
-            <li>Gymnasium env, 7-D action (4 rotors + 3 arm joints).</li>
-            <li>Obs: <code>qpos</code> + <code>qvel</code> + relative pose/vel to next ref point.</li>
-            <li>Trained 5 M + 2 M steps with SB3 PPO, 16 parallel envs.</li>
-            <li>Deterministic eval at ~0.9 ms per step.</li>
+            <li>7-D action (4 rotors + 3 arm joints), 28-D obs (qpos, qvel, relative target).</li>
+            <li>Trained 5 M + 2 M steps, SB3 PPO, 16 parallel envs, $\sim\!0.9$ ms / step.</li>
           </ul>
         </div>
         <div>
-          <h3>MPC-BLF — safety layer</h3>
+          <h3 class="accent2">MPC-BLF — safety layer</h3>
           <ul>
-            <li>Receding horizon NLP over the full <b>12-state nonlinear quad</b>
-              (pos, vel, Euler, body-rate).</li>
-            <li>Solves for <code>U<sub>0..N-1</sub></code> that minimise
-              <code>‖U<sub>0</sub> − u<sub>ppo</sub>‖²</code> — closest safe thing to what PPO asked for.</li>
-            <li>Only touches the 4 rotors; arm joints pass through.</li>
+            <li>Receding horizon $N\!=\!7$, $dt\!=\!10$ ms, full nonlinear 12-state dynamics.</li>
+            <li>Only overrides the 4 rotors; arm joints pass through untouched.</li>
           </ul>
         </div>
       </div>
     </section>
 
-    <!-- ======================================================= Approach 2 -->
+    <!-- ======================================================= Approach 2 — MPC OCP + LaTeX -->
     <section>
       <span class="kicker">2 · Approach</span>
-      <h2>The Barrier Lyapunov safety constraint</h2>
+      <h2>Receding-horizon MPC over the full quadrotor</h2>
 
       <div class="cols tight">
         <div>
-<pre class="ascii">V(e) = ‖e‖² / (δ² − ‖e‖²),    e = p − p*
-V(e_{k+1}) ≤ β_k · V(e_k) + σ,   σ ≥ 0,  k = 0…N−1
+          <div class="eq-block">
+            <div class="label">State / input</div>
+            \[
+              \mathbf{x} = \bigl[\mathbf{p},\,\mathbf{v},\,\boldsymbol{\eta},\,\boldsymbol{\omega}\bigr]^{\!\top}\!\!\in\mathbb{R}^{12},\quad
+              \mathbf{u} = [c_1,c_2,c_3,c_4]^{\!\top}\!\in\mathbb{R}^{4}
+            \]
+          </div>
 
-β_start = 0.95   (loose, near-term: errors are ≈ unavoidable)
-β_end   = 0.15   (strict, horizon end: force contraction)
-ρ·σ²    in cost  (ρ = 1e3 – 3e3)</pre>
-          <ul style="margin-top: 10px;">
-            <li><b>Finite V ⇔ strictly inside the δ-tube</b> → V→∞ near the boundary
-              makes it impossible to choose a plan that exits.</li>
-            <li><b>Softened descent</b>: scalar slack <code>σ</code> absorbs the motor-envelope
-              infeasibility, so the NLP almost never aborts.</li>
-            <li><b>Velocity-aware barrier</b>:
-              <code>z = ‖e<sub>p</sub>‖² + α‖e<sub>v</sub>‖²</code>, penalises approaching the
-              tube <i>with speed</i>.</li>
-          </ul>
+          <div class="eq-block">
+            <div class="label">OCP at each control step</div>
+            \[
+              \begin{aligned}
+              \min_{U,\,\sigma\ge 0}\;& \|U_{0}-u_{\mathrm{ppo}}\|^{2}
+                 + \lambda\!\!\sum_{k=1}^{N-1}\!\!\|\Delta U_k\|^{2}
+                 + \rho\sigma^{2} \\
+              & +\frac{w_v}{N}\sum_{k=1}^{N}\|\mathbf{v}_k-\mathbf{v}^{\star}_k\|^{2} \\[2pt]
+              \text{s.t.}\;& \mathbf{x}_{k+1} = f_{\mathrm{RK4}}(\mathbf{x}_k, U_k),\; \mathbf{x}_0=\hat{\mathbf{x}} \\
+                           & u_{\mathrm{lo}} \le U_k \le u_{\mathrm{hi}} \\
+                           & \|\mathbf{e}_k\|\le\delta_{\mathrm{out}} \quad\text{(outer fence)} \\
+                           & V(\mathbf{e}_{k+1}) \le \beta_k V(\mathbf{e}_k) + \sigma
+                             \;\; \text{(BLF descent)}
+              \end{aligned}
+            \]
+          </div>
+          <p class="muted">Dynamics use the <b>full</b> $\mathbf{R}(\phi,\theta,\psi)$ thrust
+            rotation + Coriolis $\boldsymbol{\omega}\!\times\!\mathbf{J}\boldsymbol{\omega}$,
+            integrated by RK4 at $dt = 10$ ms.</p>
         </div>
+
         <div>
-          <h3>What the filter guarantees</h3>
-          <ul>
-            <li>When <code>σ ≈ 0</code>, the planned trajectory is
-              <b>forward-invariant</b> in the δ-tube over the horizon.</li>
-            <li>Hard fence <code>‖e‖ ≤ outer_tube</code> keeps V well-defined
-              everywhere the NLP can wander.</li>
-            <li><b>Fallback</b> to raw <code>u<sub>ppo</sub></code> if the hard
-              constraints become infeasible — measured rate ≤ 0.62%.</li>
-          </ul>
-          <h3 style="margin-top: 20px;">Solver choice</h3>
-          <p>Fatrop (structure-exploiting IP for OCPs) beat IPOPT by ~3× in
-             median solve time and SQP in robustness.</p>
+          <div class="figure">
+            <svg viewBox="0 0 520 300" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <style><![CDATA[
+                  .ax    { stroke:#1f2937; stroke-width:1.2; fill:none; }
+                  .tick  { stroke:#9ca3af; stroke-width:0.8; }
+                  .gtxt  { font: 11px "Inter", sans-serif; fill:#6b7280; }
+                  .ltxt  { font: 600 12px "Inter", sans-serif; fill:#1f2937; }
+                  .ref   { stroke:#1f2937; stroke-width:1.8; fill:none; stroke-dasharray:5 4; }
+                  .pred  { stroke:#2c6df5; stroke-width:1.8; fill:none; }
+                  .past  { stroke:#9ca3af; stroke-width:1.6; fill:none; }
+                  .tube  { fill:#eef3ff; stroke:#93c5fd; stroke-dasharray:3 3; }
+                </style></defs>
+
+              <!-- tube shaded band around reference -->
+              <path class="tube" d="M40,160
+                                    C130,120 220,100 320,90
+                                    L500,80
+                                    L500,130
+                                    C380,150 270,170 170,195
+                                    L40,220 Z" />
+
+              <!-- axes -->
+              <line class="ax" x1="40" y1="260" x2="500" y2="260"/>
+              <line class="ax" x1="40" y1="30"  x2="40"  y2="260"/>
+              <text class="gtxt" x="500" y="278" text-anchor="end">time  t</text>
+              <text class="gtxt" x="24"  y="40"  text-anchor="end">pos</text>
+
+              <!-- "now" divider -->
+              <line class="tick" x1="200" y1="30" x2="200" y2="260" stroke-dasharray="3 3"/>
+              <text class="gtxt" x="200" y="24" text-anchor="middle">t = t₀ (now)</text>
+
+              <!-- past trajectory -->
+              <path class="past" d="M40,235 C90,225 140,215 200,205"/>
+              <circle cx="200" cy="205" r="4" fill="#1f2937"/>
+
+              <!-- reference -->
+              <path class="ref" d="M40,180 C120,150 220,120 320,105 L500,100"/>
+              <text class="ltxt" x="460" y="94" fill="#1f2937">p*(t)</text>
+
+              <!-- MPC prediction (next N steps) -->
+              <path class="pred" d="M200,205 L230,185 L260,168 L290,155 L320,140 L350,126 L380,116 L410,108"/>
+              <g fill="#2c6df5">
+                <circle cx="230" cy="185" r="3.5"/>
+                <circle cx="260" cy="168" r="3.5"/>
+                <circle cx="290" cy="155" r="3.5"/>
+                <circle cx="320" cy="140" r="3.5"/>
+                <circle cx="350" cy="126" r="3.5"/>
+                <circle cx="380" cy="116" r="3.5"/>
+                <circle cx="410" cy="108" r="3.5"/>
+              </g>
+              <text class="ltxt" x="420" y="104" fill="#2c6df5">x₁…x_N  (predicted)</text>
+
+              <!-- labels -->
+              <text class="ltxt" x="120" y="232" fill="#6b7280">x(·)  measured</text>
+              <text class="ltxt" x="260" y="248" fill="#93c5fd">δ-tube</text>
+
+              <!-- first applied input tag -->
+              <line x1="200" y1="205" x2="230" y2="185" stroke="#2c6df5" stroke-width="3"/>
+              <text class="ltxt" x="222" y="200" fill="#2c6df5">U₀ applied</text>
+            </svg>
+            <div class="fcaption">Receding-horizon MPC: each solve plans $N$ steps ahead
+              inside the $\delta$-tube, but only $U_0$ is applied; horizon slides forward
+              at the next step.</div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- ======================================================= Approach 3 -->
+    <!-- ======================================================= Approach 3 — BLF figure + equations -->
+    <section>
+      <span class="kicker">2 · Approach</span>
+      <h2>Barrier Lyapunov Function — safety as a potential wall</h2>
+
+      <div class="cols tight">
+        <div>
+          <div class="eq-block">
+            <div class="label">Barrier Lyapunov function</div>
+            \[
+              V(\mathbf{e}) = \frac{\|\mathbf{e}\|^{2}}{\delta^{2}-\|\mathbf{e}\|^{2}},
+              \qquad \mathbf{e} = \mathbf{p} - \mathbf{p}^{\star}
+            \]
+            \[
+              V(\mathbf{e})\!<\!\infty \;\Longleftrightarrow\; \|\mathbf{e}\|<\delta
+            \]
+          </div>
+          <div class="eq-block">
+            <div class="label">Softened descent constraint</div>
+            \[
+              V(\mathbf{e}_{k+1}) \;\le\; \beta_k\,V(\mathbf{e}_{k}) + \sigma,
+              \quad \sigma\ge 0,\;\; k=0,\dots,N{-}1
+            \]
+            \[
+              \beta_k = \beta_{\mathrm{start}}\!\left(\tfrac{\beta_{\mathrm{end}}}{\beta_{\mathrm{start}}}\right)^{k/(N-1)}\!,\;
+              \beta_0\!=\!0.95,\;\beta_{N-1}\!=\!0.15
+            \]
+          </div>
+          <div class="eq-block">
+            <div class="label">Velocity-aware barrier (used for moving targets)</div>
+            \[
+              z(\mathbf{e}_p, \mathbf{e}_v) = \|\mathbf{e}_p\|^{2} + \alpha\,\|\mathbf{e}_v\|^{2},
+              \quad V(z) = \frac{z}{\delta^{2}-z}
+            \]
+          </div>
+          <ul>
+            <li>$\sigma$ is a single scalar, heavily penalised by $\rho\sigma^{2}$ in the cost
+              — nonzero only when the motor envelope rules out strict contraction.</li>
+            <li>Finite $V$ $\Rightarrow$ forward-invariant $\delta$-tube over the horizon.</li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="figure">
+            <svg viewBox="0 0 520 360" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <style><![CDATA[
+                  .ax    { stroke:#1f2937; stroke-width:1.2; fill:none; }
+                  .asym  { stroke:#b42318; stroke-width:1.5; stroke-dasharray:6 4; fill:none; }
+                  .vcurve{ stroke:#2c6df5; stroke-width:2.5; fill:none; }
+                  .safe  { fill:#eef3ff; opacity:0.6; }
+                  .unsafe{ fill:#fde8e8; opacity:0.6; }
+                  .gtxt  { font: 11px "Inter", sans-serif; fill:#6b7280; }
+                  .ltxt  { font: 600 12px "Inter", sans-serif; fill:#1f2937; }
+                ]]></style>
+              </defs>
+
+              <!-- safe / unsafe regions -->
+              <rect class="safe"   x="40"  y="30" width="310" height="260"/>
+              <rect class="unsafe" x="350" y="30" width="120" height="260"/>
+
+              <!-- axes -->
+              <line class="ax" x1="40"  y1="290" x2="480" y2="290"/>
+              <line class="ax" x1="40"  y1="30"  x2="40"  y2="290"/>
+              <text class="gtxt" x="480" y="308" text-anchor="end">‖e‖</text>
+              <text class="gtxt" x="24"  y="40"  text-anchor="end">V(e)</text>
+
+              <!-- tick for delta -->
+              <line class="asym" x1="350" y1="30" x2="350" y2="290"/>
+              <text class="ltxt" x="354" y="48"  fill="#b42318">‖e‖ = δ  (tube edge)</text>
+
+              <!-- V curve: V = u^2 / (1 - u^2), u in [0, 0.97]  mapped to pixels -->
+              <!-- x: 40..350 = 310 px for u in [0,1);  y: 290..50 = 240 px for V in [0, ~15] -->
+              <path class="vcurve" d="
+                M40,290
+                L71,288
+                L102,283
+                L133,274
+                L164,261
+                L195,243
+                L226,220
+                L257,191
+                L288,153
+                L319,100
+                L340,55
+                L347,38
+              "/>
+
+              <!-- annotate sample points -->
+              <circle cx="226" cy="220" r="4" fill="#2c6df5"/>
+              <text class="ltxt" x="160" y="215" fill="#2c6df5">low V : safe, far from edge</text>
+
+              <circle cx="319" cy="100" r="4" fill="#2c6df5"/>
+              <text class="ltxt" x="225" y="90"  fill="#2c6df5">high V : approaching edge</text>
+
+              <text class="ltxt" x="400" y="170" fill="#b42318" text-anchor="middle">V → ∞</text>
+              <text class="ltxt" x="400" y="188" fill="#b42318" text-anchor="middle">(infeasible)</text>
+
+              <!-- descent arrow demonstrating V_{k+1} ≤ β V_k -->
+              <g>
+                <path d="M319,100 C300,145 260,185 230,215" stroke="#10b981" stroke-width="2"
+                      fill="none" marker-end="url(#arr2)"/>
+                <defs>
+                  <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5"
+                          markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M0,0 L10,5 L0,10 z" fill="#10b981"/>
+                  </marker>
+                </defs>
+                <text class="ltxt" x="285" y="138" fill="#10b981">V_{k+1} ≤ β_k V_k</text>
+                <text class="gtxt" x="285" y="154" fill="#10b981">(geometric descent)</text>
+              </g>
+
+              <!-- bottom caption for axis -->
+              <text class="gtxt" x="100" y="340">safe set  {‖e‖ &lt; δ}</text>
+              <text class="gtxt" x="370" y="340" fill="#b42318">unsafe</text>
+            </svg>
+            <div class="fcaption">The barrier $V$ is finite inside the tube and blows up at
+              $\|\mathbf{e}\|\!\to\!\delta$; requiring $V$ to contract at every stage
+              <b>keeps planned trajectories inside</b> the tube.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= Full mathematical pipeline -->
+    <section>
+      <span class="kicker">2 · Approach</span>
+      <h2>Full mathematical pipeline</h2>
+      <div class="cols tight">
+        <div>
+          <div class="eq-block">
+            <div class="label">1. Reference  (min-snap, 7<sup>th</sup>-order)</div>
+            \[
+              p^{\star}_i(t)=\!\sum_{k=0}^{7}\!a_{i,k}t^{k},\;\;
+              v^{\star}_i(t)=\dot p^{\star}_i(t),
+            \]
+            \[
+              T=\mathrm{clip}\!\bigl(\|\mathbf p_f{-}\mathbf p_0\|/v_{\mathrm{avg}},\,T_{\min},T_{\max}\bigr)
+            \]
+          </div>
+
+          <div class="eq-block">
+            <div class="label">2. PPO policy</div>
+            \[
+              \mathbf o_t=\bigl[\mathbf q_t,\dot{\mathbf q}_t,\mathbf p^{\star}_{t+1}{-}\mathbf p_t,\mathbf v^{\star}_{t+1}{-}\mathbf v_t,(\mathbf p^{\star}_{t+1}{+}\mathbf d_{\mathrm{ee}}){-}\mathbf{ee}_t\bigr]
+            \]
+            \[
+              \mathbf a_t=\pi_\theta(\mathbf o_t)\in[-1,1]^7,\;\;
+              \mathrm{ctrl}_{t,i}=\mathrm{lo}_i+\tfrac{a_{t,i}{+}1}{2}(\mathrm{hi}_i{-}\mathrm{lo}_i)
+            \]
+            \[
+              r_t=2e^{-2\|\mathbf e_p\|^{2}}+e^{-\|\mathbf e_v\|^{2}}+3e^{-3\|\mathbf e_{ee}\|^{2}}-0.01\|\mathbf a_t\|^{2}+0.1
+            \]
+          </div>
+
+          <div class="eq-block">
+            <div class="label">3. Reduced 12-state quadrotor for the MPC</div>
+            \[
+              \mathbf x=[\mathbf p,\mathbf v,\boldsymbol\eta,\boldsymbol\omega]^{\!\top},\;\;
+              \mathbf u=[c_1{,}c_2{,}c_3{,}c_4]^{\!\top}
+            \]
+            \[
+              \dot{\mathbf v}=\tfrac{F_z}{m}\mathbf R_{e_3}\!(\boldsymbol\eta)-g\mathbf e_3,\;\;
+              \mathbf J\dot{\boldsymbol\omega}=\boldsymbol\tau-\boldsymbol\omega\!\times\!(\mathbf J\boldsymbol\omega)
+            \]
+            \[
+              [F_z,\tau_x,\tau_y,\tau_z]^{\!\top}=\mathbf M\,\mathbf u,\qquad
+              \mathbf x_{k+1}=f_{\mathrm{RK4}}(\mathbf x_k,\mathbf u_k)
+            \]
+          </div>
+        </div>
+
+        <div>
+          <div class="eq-block">
+            <div class="label">4. Barrier Lyapunov (velocity-aware)</div>
+            \[
+              z(\mathbf e_p,\mathbf e_v)=\|\mathbf e_p\|^{2}+\alpha\|\mathbf e_v\|^{2},\quad
+              V(z)=\frac{z}{\delta^{2}-z}
+            \]
+            \[
+              \beta_k=\beta_{\mathrm{start}}\!\left(\tfrac{\beta_{\mathrm{end}}}{\beta_{\mathrm{start}}}\right)^{k/(N-1)},\;k=0,\dots,N{-}1
+            \]
+          </div>
+
+          <div class="eq-block">
+            <div class="label">5. MPC-BLF OCP  (solved every $s$ steps)</div>
+            \[
+              \begin{aligned}
+              \min_{X,U,\sigma\ge 0}\;&\|U_0{-}\mathbf u_{\mathrm{ppo}}\|^{2}
+                +\lambda\!\!\sum_{k=1}^{N-1}\!\!\|\Delta U_k\|^{2}
+                +\rho\sigma^{2}
+                +\tfrac{w_v}{N}\!\sum_{k=1}^{N}\!\|\mathbf v_k{-}\mathbf v^{\star}_k\|^{2}\\
+              \text{s.t.}\;&\mathbf x_0=\hat{\mathbf x},\;\;\mathbf x_{k+1}=f_{\mathrm{RK4}}(\mathbf x_k,U_k)\\
+                           &\mathbf u_{\mathrm{lo}}\le U_k\le\mathbf u_{\mathrm{hi}}\\
+                           &z(\mathbf e_{p,k},\mathbf e_{v,k})\le\delta_{\mathrm{out}}^{2}\\
+                           &V(z_{k+1})\le\beta_k V(z_k)+\sigma
+              \end{aligned}
+            \]
+          </div>
+
+          <div class="eq-block">
+            <div class="label">6. Applied control</div>
+            \[
+              \mathbf a^{\mathrm{safe}}_{t}=\bigl[\mathcal M^{-1}\!\bigl(\mathrm{clip}(U^{\star}_0)\bigr),\;\mathbf a^{\mathrm{ppo}}_{t,4:7}\bigr]
+            \]
+            <p class="muted" style="font-size: 0.88em; margin: 4px 0 0;">
+              Fallback to $\mathbf a^{\mathrm{ppo}}_t$ if $z_0\ge\delta_{\mathrm{out}}^{2}$ or
+              solver fails. Between stride solves, raw PPO is applied (no ZOH).
+            </p>
+          </div>
+
+          <div class="eq-block">
+            <div class="label">7. Safety guarantee (informal)</div>
+            <p style="font-size: 0.88em; margin: 0;">
+              If $\sigma=0$ along the plan,
+              $\,V(z_{k+1})\le\beta_k V(z_k)<\infty\Rightarrow z_{k+1}<\delta^{2}$
+              — the $\delta$-tube is <b>forward-invariant</b> over the horizon.
+              Measured $\sigma\!>\!0$ on $<1\%$ of steps, matching the 0% tube-violation rate.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= Approach 4 — defaults table -->
     <section>
       <span class="kicker">2 · Approach</span>
       <h2>Tuned defaults and what each knob does</h2>
       <table>
         <tr><th>flag</th><th>symbol</th><th>traj</th><th>disturb</th><th>role</th></tr>
-        <tr><td><code>--tube</code></td><td class="num">δ</td><td class="num">0.12 m</td><td class="num">0.12 m</td><td>BLF tube radius; finite V iff inside</td></tr>
-        <tr><td><code>--mpc-horizon</code></td><td class="num">N</td><td class="num">7</td><td class="num">7</td><td>plan length at <code>dt = 10 ms</code></td></tr>
-        <tr><td><code>--mpc-stride</code></td><td class="num">–</td><td class="num">1</td><td class="num">2</td><td>NLP solved every <i>k</i> env steps</td></tr>
-        <tr><td><code>--beta-start</code></td><td class="num">β₀</td><td class="num">0.95</td><td class="num">0.95</td><td>loose near-term contraction</td></tr>
-        <tr><td><code>--beta-end</code></td><td class="num">β<sub>N−1</sub></td><td class="num">0.15</td><td class="num">0.15</td><td>strict terminal contraction</td></tr>
-        <tr><td><code>--slack-penalty</code></td><td class="num">ρ</td><td class="num">1e3</td><td class="num">1e4</td><td>weight on ρ·σ² in cost</td></tr>
-        <tr><td><code>--velocity-penalty</code></td><td class="num">w<sub>v</sub></td><td class="num">5e4</td><td class="num">5e4</td><td>D-term on ‖v − v*‖²</td></tr>
-        <tr><td><code>--barrier-velocity-weight</code></td><td class="num">α</td><td class="num">0.03</td><td class="num">0.1</td><td>vel-aware barrier lookahead²</td></tr>
-        <tr><td><code>--smooth-penalty</code></td><td class="num">λ</td><td class="num">1e-2</td><td class="num">1e-2</td><td>‖ΔU<sub>k</sub>‖² smoothing</td></tr>
-        <tr><td><code>--mpc-solver</code></td><td class="num">–</td><td class="num">fatrop</td><td class="num">fatrop</td><td>structure-exploiting IP</td></tr>
+        <tr><td><code>--tube</code></td><td>$\delta$</td><td class="num">0.12 m</td><td class="num">0.12 m</td><td>BLF tube radius; $V$ finite iff inside</td></tr>
+        <tr><td><code>--mpc-horizon</code></td><td>$N$</td><td class="num">7</td><td class="num">7</td><td>plan length at $dt = 10$ ms</td></tr>
+        <tr><td><code>--mpc-stride</code></td><td>—</td><td class="num">1</td><td class="num">2</td><td>NLP solved every $k$ env steps</td></tr>
+        <tr><td><code>--beta-start</code></td><td>$\beta_0$</td><td class="num">0.95</td><td class="num">0.95</td><td>loose near-term contraction</td></tr>
+        <tr><td><code>--beta-end</code></td><td>$\beta_{N-1}$</td><td class="num">0.15</td><td class="num">0.15</td><td>strict terminal contraction</td></tr>
+        <tr><td><code>--slack-penalty</code></td><td>$\rho$</td><td class="num">$10^{3}$</td><td class="num">$10^{4}$</td><td>weight on $\rho\sigma^{2}$ in cost</td></tr>
+        <tr><td><code>--velocity-penalty</code></td><td>$w_v$</td><td class="num">$5\!\cdot\!10^{4}$</td><td class="num">$5\!\cdot\!10^{4}$</td><td>D-term on $\|\mathbf{v}-\mathbf{v}^{\star}\|^{2}$</td></tr>
+        <tr><td><code>--barrier-velocity-weight</code></td><td>$\alpha$</td><td class="num">0.03</td><td class="num">0.1</td><td>velocity-aware barrier lookahead$^2$</td></tr>
+        <tr><td><code>--smooth-penalty</code></td><td>$\lambda$</td><td class="num">$10^{-2}$</td><td class="num">$10^{-2}$</td><td>$\|\Delta U_k\|^{2}$ smoothing</td></tr>
+        <tr><td><code>--mpc-solver</code></td><td>—</td><td class="num">fatrop</td><td class="num">fatrop</td><td>structure-exploiting IP</td></tr>
       </table>
       <p class="muted" style="margin-top: 10px;">
-        Trajectory defaults picked by a grid sweep (<code>scripts/tune_trajectory.py</code>); disturbance defaults from
-        <code>scripts/tune_wind_high.py</code> + <code>tune_arm_fold.py</code>. Only σ-penalty and α change between regimes.
+        Trajectory defaults picked by a grid sweep (<code>scripts/tune_trajectory.py</code>);
+        disturbance defaults from <code>scripts/tune_wind_high.py</code> +
+        <code>tune_arm_fold.py</code>. Only $\rho$ and $\alpha$ change between regimes.
       </p>
     </section>
 
@@ -316,12 +696,12 @@ V(e_{k+1}) ≤ β_k · V(e_k) + σ,   σ ≥ 0,  k = 0…N−1
       <div class="cols tight">
         <div>
           <h3>PPO only  ·  seed 0</h3>
-          <video src="../videos/ppo/ep00_seed0.mp4" muted autoplay loop playsinline></video>
+          <video src="videos/ppo/ep00_seed0.mp4" muted autoplay loop playsinline controls></video>
           <div class="media-caption">pos RMSE <b>0.122 m</b>  ·  peak err <b>0.177 m</b>  ·  tube viol <b>29.7%</b></div>
         </div>
         <div>
           <h3 class="accent">PPO + MPC-BLF  ·  seed 0</h3>
-          <video src="../videos/ppo_mpc_blf/ep00_seed0.mp4" muted autoplay loop playsinline></video>
+          <video src="videos/ppo_mpc_blf/ep00_seed0.mp4" muted autoplay loop playsinline controls></video>
           <div class="media-caption">pos RMSE <b>0.062 m</b>  ·  peak err <b>0.085 m</b>  ·  tube viol <b>0.0%</b></div>
         </div>
       </div>
@@ -363,15 +743,15 @@ V(e_{k+1}) ≤ β_k · V(e_k) + σ,   σ ≥ 0,  k = 0…N−1
       <div class="cols tight">
         <div>
           <h3>PPO only</h3>
-          <video src="../videos/disturbance/arm_fold_ppo.mp4" muted autoplay loop playsinline></video>
+          <video src="videos/disturbance/arm_fold_ppo.mp4" muted autoplay loop playsinline controls></video>
           <div class="media-caption">
-            Crashed at ~12 s. Phase-3 peak deviation <b>1.45 m</b>,
+            Crashed at $\sim\!12$ s. Phase-3 peak deviation <b>1.45 m</b>,
             peak vel <b>6.06 m/s</b>.
           </div>
         </div>
         <div>
           <h3 class="accent">PPO + MPC-BLF</h3>
-          <video src="../videos/disturbance/arm_fold_mpc_blf.mp4" muted autoplay loop playsinline></video>
+          <video src="videos/disturbance/arm_fold_mpc_blf.mp4" muted autoplay loop playsinline controls></video>
           <div class="media-caption">
             Settles <b>0.01 s</b> after disturbance ends. Peak dev <b>3.5 cm</b>, peak vel <b>5 cm/s</b>.
           </div>
@@ -390,8 +770,8 @@ V(e_{k+1}) ≤ β_k · V(e_k) + σ,   σ ≥ 0,  k = 0…N−1
           <h3>4a. Compute cost is real</h3>
           <img src="plots/solve_cost.png" class="fit" alt="solve cost" />
           <p class="muted" style="margin-top: 8px; font-size: 0.7em;">
-            Fatrop + stride=3 gives a 33% duty cycle and ~40 ms median solve.
-            Stride=1 is needed for the tightest tracking, but doubles compute.
+            Fatrop + stride $=\!3$ gives a 33% duty cycle and $\sim\!40$ ms median solve.
+            Stride $=\!1$ is needed for the tightest tracking, but doubles compute.
           </p>
         </div>
         <div>
@@ -401,9 +781,9 @@ V(e_{k+1}) ≤ β_k · V(e_k) + σ,   σ ≥ 0,  k = 0…N−1
               attitude loop — replaced with "apply raw PPO between solves".</li>
             <li><b>Small-angle linearised dynamics</b> in the MPC: plans
               disagreed with MuJoCo during aggressive banked turns. Fixed with
-              the full <code>R(φ, θ, ψ)</code> thrust rotation + Coriolis.</li>
+              the full $\mathbf{R}(\phi,\theta,\psi)$ thrust rotation + Coriolis.</li>
             <li><b>Hard BLF descent</b> (no slack): NLP went infeasible at motor
-              saturation. Scalar slack <code>σ</code> with heavy <code>ρ·σ²</code>
+              saturation. Scalar slack $\sigma$ with heavy $\rho\sigma^{2}$
               penalty cured it without loosening the tube.</li>
             <li><b>Position-only barrier</b>: drone coasted through the setpoint.
               Velocity-aware barrier + stage-wise velocity cost broke the
@@ -422,28 +802,27 @@ V(e_{k+1}) ≤ β_k · V(e_k) + σ,   σ ≥ 0,  k = 0…N−1
       <div class="cols tight">
         <div>
           <h3>Sign stability of ZYX Euler from MuJoCo quaternions</h3>
-          <p>Double-cover flips in <code>q<sub>w</sub></code> caused the MPC
-             to see ±180° "jumps" and plan huge corrective torques.
-             Fix: canonicalise <code>q<sub>w</sub> ≥ 0</code> before
-             extracting Euler angles.</p>
+          <p>Double-cover flips in $q_w$ caused the MPC to see $\pm 180^{\circ}$
+             "jumps" and plan huge corrective torques. Fix: canonicalise
+             $q_w \ge 0$ before extracting Euler angles.</p>
 
-          <h3>MuJoCo actuator allocation ≠ "textbook" X-config</h3>
-          <p>The M matrix has to come from
+          <h3>MuJoCo actuator allocation ≠ textbook X-config</h3>
+          <p>The allocation $\mathbf{M}$ has to come from
              <code>actuator_gear</code> × <code>site_pos</code>. Hard-coding a
-             symmetric X-config silently offset <code>τ<sub>z</sub></code>,
-             giving yaw drift in long episodes.</p>
+             symmetric X-config silently offset $\tau_z$, giving yaw drift in
+             long episodes.</p>
         </div>
         <div>
           <h3>Warm-starting CasADi is make-or-break</h3>
-          <p>Cold start: ~140 ms and occasional Fatrop stalls.
-             Warm start from previous solution:  ~40 ms median and almost no
-             fallbacks.</p>
+          <p>Cold start: $\sim\!140$ ms and occasional Fatrop stalls.
+             Warm start from previous solution: $\sim\!40$ ms median and almost
+             no fallbacks.</p>
 
           <h3>Tuning a soft barrier is a 3-D fight</h3>
-          <p><code>(β-schedule, ρ, α)</code> all trade off solve time vs.
-             aggressiveness vs. damping. Separate grid sweeps per regime
-             (trajectory vs. disturbance) were needed; one-size-fits-all was
-             worse at both.</p>
+          <p>The triple $(\beta\text{-schedule},\,\rho,\,\alpha)$ all trade off
+             solve time vs. aggressiveness vs. damping. Separate grid sweeps per
+             regime (trajectory vs. disturbance) were needed; one-size-fits-all
+             was worse at both.</p>
         </div>
       </div>
     </section>
@@ -455,12 +834,12 @@ V(e_{k+1}) ≤ β_k · V(e_k) + σ,   σ ≥ 0,  k = 0…N−1
       <div class="cols tight">
         <div>
           <h3>PPO  ·  wind-high (2.5 N pulse)</h3>
-          <video src="../videos/disturbance/wind_high_ppo.mp4" muted autoplay loop playsinline></video>
+          <video src="videos/disturbance/wind_high_ppo.mp4" muted autoplay loop playsinline controls></video>
           <div class="media-caption">Phase-3 peak <b>52 cm</b>, peak vel <b>2.14 m/s</b>, never settles.</div>
         </div>
         <div>
           <h3 class="accent">PPO + MPC-BLF  ·  wind-high</h3>
-          <video src="../videos/disturbance/wind_high_mpc_blf.mp4" muted autoplay loop playsinline></video>
+          <video src="videos/disturbance/wind_high_mpc_blf.mp4" muted autoplay loop playsinline controls></video>
           <div class="media-caption">Settles <b>0.87 s</b> after pulse ends, peak <b>7 cm</b>.</div>
         </div>
       </div>
@@ -480,17 +859,18 @@ V(e_{k+1}) ≤ β_k · V(e_k) + σ,   σ ≥ 0,  k = 0…N−1
         <li><b>Filter, don't re-train.</b> A thin model-based safety layer fixed
           a catastrophic OOD failure (arm-fold) without touching PPO weights.
           Cheaper than curriculum + wind randomisation during training.</li>
-        <li><b>Barrier Lyapunov &gt; plain CBF here.</b> A BLF is its own invariance
-          certificate; you get a forward-invariant set with one inequality per
-          stage, no extra class-𝒦 tuning.</li>
+        <li><b>Barrier Lyapunov &gt; plain CBF here.</b> A BLF is its own
+          invariance certificate; one inequality per stage,
+          $V(\mathbf{e})\!<\!\infty\!\Leftrightarrow\!\|\mathbf{e}\|\!<\!\delta$,
+          no extra class-$\mathcal{K}$ tuning.</li>
         <li><b>Velocity-aware barriers matter for moving setpoints.</b> A
-          position-only barrier lets the drone coast through the goal at
-          speed; <code>z = ‖e<sub>p</sub>‖² + α‖e<sub>v</sub>‖²</code> removes that
+          position-only barrier lets the drone coast through the goal at speed;
+          $z=\|\mathbf{e}_p\|^{2}+\alpha\|\mathbf{e}_v\|^{2}$ removes that
           degeneracy.</li>
-        <li><b>Fatrop + warm-start got a real-time-ish receding-horizon NLP
-          onto a 7-DoF learned system</b> in CasADi, ~40 ms / solve, on CPU.</li>
-        <li><b>Natural next steps.</b> Hardware transfer, learning β and α
-          from data, and composing the same filter with a flow-matching
+        <li><b>Fatrop + warm-start got a real-time-ish receding-horizon NLP onto
+          a 7-DoF learned system</b> in CasADi, $\sim\!40$ ms / solve, on CPU.</li>
+        <li><b>Natural next steps.</b> Hardware transfer, learning $\beta$ and
+          $\alpha$ from data, and composing the same filter with a flow-matching
           trajectory generator instead of a hand-designed min-snap reference.</li>
       </ul>
       <hr />

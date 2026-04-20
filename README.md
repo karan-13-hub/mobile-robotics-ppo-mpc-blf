@@ -41,7 +41,6 @@ at the bottom of this README.
 | Goal reach rate (15 cm tol.)          |  100.00 %  |    100.00 %   |              |
 | Position tracking RMSE  [m]           |    0.1443  |    **0.0658** | **−54.4 %**  |
 | Velocity tracking RMSE  [m/s]         |    0.1599  |    **0.0646** | **−59.6 %**  |
-| End-effector tracking RMSE [m]        |    0.2243  |      0.1868   |  −16.7 %     |
 | Peak tracking error [m]               |    0.2192  |    **0.0910** | **−58.5 %**  |
 | Tube violation rate (‖e‖ > 12 cm)     |   40.72 %  |    **0.00 %** | **−100 %**   |
 | Median solve time [ms]                |    0.91    |     33.2      |              |
