@@ -1,0 +1,37 @@
+/home/kmirakho/Documents/mobile-robotics/venv/lib/python3.12/site-packages/stable_baselines3/common/on_policy_algorithm.py:150: UserWarning: You are trying to run PPO on the GPU, but it is primarily intended to run on the CPU when not using a CNN policy (you are using ActorCriticPolicy which should be a MlpPolicy). See https://github.com/DLR-RM/stable-baselines3/issues/1245 for more info. You can pass `device='cpu'` or `export CUDA_VISIBLE_DEVICES=` to force using the CPU.Note: The model will train, but the GPU utilization will be poor and the training might take longer than on CPU.
+  warnings.warn(
+Evaluating Phase 2: PPO baseline on min-snap reference tracking
+Running 20 deterministic episodes...
+  ep 00 | T=3.24s len=5.24s | pos_RMSE=0.141 vel_RMSE=0.168 ee_RMSE=0.252 | final_d=0.056 | REACH | tube_viol=55.1% peak_e=0.212 solve=1.34/3.16ms
+  ep 01 | T=2.40s len=4.40s | pos_RMSE=0.164 vel_RMSE=0.201 ee_RMSE=0.255 | final_d=0.062 | REACH | tube_viol=66.5% peak_e=0.240 solve=1.34/2.19ms
+  ep 02 | T=2.79s len=4.79s | pos_RMSE=0.143 vel_RMSE=0.173 ee_RMSE=0.187 | final_d=0.068 | REACH | tube_viol=51.8% peak_e=0.225 solve=1.34/2.17ms
+  ep 03 | T=3.91s len=5.91s | pos_RMSE=0.158 vel_RMSE=0.118 ee_RMSE=0.210 | final_d=0.069 | REACH | tube_viol=60.3% peak_e=0.238 solve=1.33/2.50ms
+  ep 04 | T=2.69s len=4.69s | pos_RMSE=0.140 vel_RMSE=0.208 ee_RMSE=0.258 | final_d=0.031 | REACH | tube_viol=57.5% peak_e=0.209 solve=1.33/2.07ms
+  ep 05 | T=2.00s len=4.00s | pos_RMSE=0.109 vel_RMSE=0.178 ee_RMSE=0.219 | final_d=0.074 | REACH | tube_viol=43.0% peak_e=0.149 solve=1.34/2.13ms
+  ep 06 | T=4.03s len=6.03s | pos_RMSE=0.169 vel_RMSE=0.124 ee_RMSE=0.205 | final_d=0.059 | REACH | tube_viol=63.2% peak_e=0.253 solve=1.34/3.56ms
+  ep 07 | T=2.92s len=4.92s | pos_RMSE=0.177 vel_RMSE=0.193 ee_RMSE=0.250 | final_d=0.061 | REACH | tube_viol=62.2% peak_e=0.271 solve=1.35/2.13ms
+  ep 08 | T=3.87s len=5.88s | pos_RMSE=0.107 vel_RMSE=0.107 ee_RMSE=0.227 | final_d=0.063 | REACH | tube_viol=37.0% peak_e=0.153 solve=1.34/1.85ms
+  ep 09 | T=4.05s len=6.06s | pos_RMSE=0.110 vel_RMSE=0.099 ee_RMSE=0.160 | final_d=0.069 | REACH | tube_viol=39.5% peak_e=0.166 solve=1.33/2.09ms
+  ep 10 | T=3.71s len=5.72s | pos_RMSE=0.158 vel_RMSE=0.127 ee_RMSE=0.199 | final_d=0.060 | REACH | tube_viol=58.2% peak_e=0.240 solve=1.34/1.85ms
+  ep 11 | T=3.64s len=5.65s | pos_RMSE=0.125 vel_RMSE=0.119 ee_RMSE=0.181 | final_d=0.050 | REACH | tube_viol=46.7% peak_e=0.193 solve=1.35/3.85ms
+  ep 12 | T=3.26s len=5.27s | pos_RMSE=0.168 vel_RMSE=0.176 ee_RMSE=0.256 | final_d=0.066 | REACH | tube_viol=59.8% peak_e=0.259 solve=1.35/1.88ms
+  ep 13 | T=2.00s len=4.00s | pos_RMSE=0.095 vel_RMSE=0.147 ee_RMSE=0.208 | final_d=0.071 | REACH | tube_viol=23.5% peak_e=0.128 solve=1.35/1.85ms
+  ep 14 | T=3.81s len=5.82s | pos_RMSE=0.143 vel_RMSE=0.116 ee_RMSE=0.187 | final_d=0.063 | REACH | tube_viol=52.0% peak_e=0.219 solve=1.35/1.94ms
+  ep 15 | T=2.79s len=4.79s | pos_RMSE=0.121 vel_RMSE=0.210 ee_RMSE=0.255 | final_d=0.020 | REACH | tube_viol=56.5% peak_e=0.169 solve=1.33/2.31ms
+  ep 16 | T=3.65s len=5.65s | pos_RMSE=0.132 vel_RMSE=0.127 ee_RMSE=0.192 | final_d=0.049 | REACH | tube_viol=48.6% peak_e=0.206 solve=1.35/2.08ms
+  ep 17 | T=2.42s len=4.43s | pos_RMSE=0.162 vel_RMSE=0.210 ee_RMSE=0.258 | final_d=0.054 | REACH | tube_viol=63.2% peak_e=0.242 solve=1.35/2.04ms
+  ep 18 | T=2.89s len=4.90s | pos_RMSE=0.162 vel_RMSE=0.170 ee_RMSE=0.208 | final_d=0.062 | REACH | tube_viol=61.9% peak_e=0.246 solve=1.35/1.81ms
+  ep 19 | T=3.37s len=5.38s | pos_RMSE=0.124 vel_RMSE=0.166 ee_RMSE=0.243 | final_d=0.039 | REACH | tube_viol=44.2% peak_e=0.196 solve=1.33/2.09ms
+
+--- Baseline PPO (trajectory-tracking) Metrics ---
+Episodes                            : 20
+Crash rate                          : 0.00%
+Goal reach rate (tol=0.15 m)   : 100.00%
+Position tracking RMSE  [m]         : 0.1403
+Velocity tracking RMSE  [m/s]       : 0.1570
+End-effector tracking RMSE [m]      : 0.2204
+Final settling error    [m]         : 0.0573
+Tube violation rate (||e|| > 12.0 cm) : 52.53%
+Peak tracking error     [m]         : 0.2107
+Policy median solve time [ms]       : 1.34
+Policy peak   solve time [ms]       : 3.85

@@ -64,16 +64,39 @@ random start (env seed). Reach tol = 15 cm. Units: metres / metres/second.
   MPC active= 100 %      fallback   = 0 %        median/peak solve = 33.0 / 65.3 ms
   crashed   = no         reached    = yes
 
---- Trajectory-tracking aggregate (20 deterministic episodes, seed 0) ---
-                         PPO         MPC-BLF       delta
-  pos RMSE  [m]         0.1443      0.0658      -54.4 %
-  vel RMSE  [m/s]       0.1599      0.0646      -59.6 %
-  ee  RMSE  [m]         0.2243      0.1868      -16.7 %
-  peak err  [m]         0.2192      0.0910      -58.5 %
-  tube viol  (>12 cm)   40.72 %      0.00 %
-  MPC fallback            --         0.00 %
-  goal reach rate       100.00 %   100.00 %
-  crash rate              0.00 %     0.00 %
+--- Trajectory-tracking aggregate (5 seeds x 20 deterministic episodes = 100 eps) ---
+Seeds = [0, 20, 40, 60, 80].  Reported as  mean +/- std_seed [+/- std_ep],
+where std_seed is over the 5 seed-level means (n=5) and std_ep is over all
+100 individual episodes (n=100).  Tube threshold = 12 cm.
+Source: logs/multi_seed/summary.json  (regenerated 2026-04-20).
+
+                              PPO                                 MPC-BLF
+  pos RMSE  [m]      0.1413 +/- 0.0038 [+/- 0.0220]     0.0643 +/- 0.0008 [+/- 0.0061]
+  vel RMSE  [m/s]    0.1719 +/- 0.0157 [+/- 0.0522]     0.0665 +/- 0.0032 [+/- 0.0142]
+  peak err  [m]      0.2146 +/- 0.0057 [+/- 0.0354]     0.0884 +/- 0.0013 [+/- 0.0078]
+  tube viol >12 cm   53.53% +/- 1.45%  [+/- 9.71%]      0.00%  +/- 0.00%  [+/- 0.00%]
+  median solve [ms]  1.22   +/- 0.07   [+/- 0.10]       33.39  +/- 0.28   [+/- 0.83]
+  per-ep peak  [ms]  2.58   +/- 0.35   [+/- 1.76]       58.22  +/- 1.87   [+/- 14.23]
+  abs peak    [ms]   10.44                              109.90
+  MPC fallback           --                              0.00 %
+  goal reach rate       100.00 % (100/100)              100.00 % (100/100)
+  crash rate              0.00 %                          0.00 %
+
+Per-seed means (PPO):
+  seed=0   pos=0.1442 vel=0.1598 peak=0.2192 viol=54.54% medslv=1.23 pkslv=2.58
+  seed=20  pos=0.1404 vel=0.1568 peak=0.2107 viol=52.54% medslv=1.34 pkslv=2.28
+  seed=40  pos=0.1470 vel=0.1989 peak=0.2236 viol=55.85% medslv=1.18 pkslv=2.44
+  seed=60  pos=0.1381 vel=0.1641 peak=0.2104 viol=51.91% medslv=1.22 pkslv=3.24
+  seed=80  pos=0.1370 vel=0.1800 peak=0.2092 viol=52.81% medslv=1.15 pkslv=2.35
+Per-seed means (MPC-BLF):
+  seed=0   pos=0.0657 vel=0.0645 peak=0.0910 viol=0.00%  medslv=33.59 pkslv=61.15
+  seed=20  pos=0.0641 vel=0.0626 peak=0.0882 viol=0.00%  medslv=33.48 pkslv=56.25
+  seed=40  pos=0.0638 vel=0.0718 peak=0.0877 viol=0.00%  medslv=33.48 pkslv=57.60
+  seed=60  pos=0.0644 vel=0.0655 peak=0.0875 viol=0.00%  medslv=33.57 pkslv=59.56
+  seed=80  pos=0.0633 vel=0.0683 peak=0.0874 viol=0.00%  medslv=32.84 pkslv=56.55
+
+(The single-seed-0 numbers above were the legacy values used in earlier
+plots; they remain consistent within ~1 sigma of the new 5-seed estimate.)
 
 ================================================================================
  2. Disturbance rejection   (videos/disturbance/*_ppo.mp4  and  *_mpc_blf.mp4)
@@ -179,8 +202,12 @@ a shifted COM rather than transiently reject a pulse.
        --save-video videos/ppo_mpc_blf/ep00_seed${s}.mp4 --video-episode 0
  done
 
- # 20-episode aggregate trajectory-tracking metrics
- python eval_ppo.py     --episodes 20 --seed 0
+ # 5-seed x 20-episode aggregate trajectory-tracking metrics
+ # (writes per-run logs and summary.json under logs/multi_seed/)
+ python scripts/eval_multi_seed.py    # default seeds [0, 20, 40, 60, 80]
+
+ # Single-seed equivalent (one column of the multi-seed protocol)
+ python eval_ppo.py     --episodes 20 --seed 0 --tube 0.12
  python eval_ppo_mpc.py --episodes 20 --seed 0 \
      --mpc-horizon 7 --tube 0.12 --mpc-stride 1 \
      --slack-penalty 1e3 --velocity-penalty 5e4 --barrier-velocity-weight 0.03

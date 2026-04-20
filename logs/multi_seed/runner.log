@@ -1,0 +1,40 @@
+>>> /home/kmirakho/Documents/mobile-robotics/venv/bin/python eval_ppo.py --model logs/continue_7M/best_model.zip --episodes 20 --seed 0 --tube 0.12
+    parsed 20 episodes in 20.3s
+>>> /home/kmirakho/Documents/mobile-robotics/venv/bin/python eval_ppo_mpc.py --model logs/continue_7M/best_model.zip --episodes 20 --seed 0 --mpc-horizon 7 --tube 0.12 --mpc-stride 1 --slack-penalty 1000.0 --velocity-penalty 50000.0 --barrier-velocity-weight 0.03
+    parsed 20 episodes in 382.4s
+>>> /home/kmirakho/Documents/mobile-robotics/venv/bin/python eval_ppo.py --model logs/continue_7M/best_model.zip --episodes 20 --seed 20 --tube 0.12
+    parsed 20 episodes in 20.7s
+>>> /home/kmirakho/Documents/mobile-robotics/venv/bin/python eval_ppo_mpc.py --model logs/continue_7M/best_model.zip --episodes 20 --seed 20 --mpc-horizon 7 --tube 0.12 --mpc-stride 1 --slack-penalty 1000.0 --velocity-penalty 50000.0 --barrier-velocity-weight 0.03
+    parsed 20 episodes in 373.0s
+>>> /home/kmirakho/Documents/mobile-robotics/venv/bin/python eval_ppo.py --model logs/continue_7M/best_model.zip --episodes 20 --seed 40 --tube 0.12
+    parsed 20 episodes in 18.7s
+>>> /home/kmirakho/Documents/mobile-robotics/venv/bin/python eval_ppo_mpc.py --model logs/continue_7M/best_model.zip --episodes 20 --seed 40 --mpc-horizon 7 --tube 0.12 --mpc-stride 1 --slack-penalty 1000.0 --velocity-penalty 50000.0 --barrier-velocity-weight 0.03
+    parsed 20 episodes in 354.5s
+>>> /home/kmirakho/Documents/mobile-robotics/venv/bin/python eval_ppo.py --model logs/continue_7M/best_model.zip --episodes 20 --seed 60 --tube 0.12
+    parsed 20 episodes in 20.3s
+>>> /home/kmirakho/Documents/mobile-robotics/venv/bin/python eval_ppo_mpc.py --model logs/continue_7M/best_model.zip --episodes 20 --seed 60 --mpc-horizon 7 --tube 0.12 --mpc-stride 1 --slack-penalty 1000.0 --velocity-penalty 50000.0 --barrier-velocity-weight 0.03
+    parsed 20 episodes in 378.4s
+>>> /home/kmirakho/Documents/mobile-robotics/venv/bin/python eval_ppo.py --model logs/continue_7M/best_model.zip --episodes 20 --seed 80 --tube 0.12
+    parsed 20 episodes in 18.7s
+>>> /home/kmirakho/Documents/mobile-robotics/venv/bin/python eval_ppo_mpc.py --model logs/continue_7M/best_model.zip --episodes 20 --seed 80 --mpc-horizon 7 --tube 0.12 --mpc-stride 1 --slack-penalty 1000.0 --velocity-penalty 50000.0 --barrier-velocity-weight 0.03
+    parsed 20 episodes in 350.6s
+
+=== summary ===
+[ppo] n_seeds=5 n_eps=100
+            pos_rmse: 0.1413   std_seeds=0.0038   std_eps=0.0220
+            vel_rmse: 0.1719   std_seeds=0.0157   std_eps=0.0522
+            peak_err: 0.2146   std_seeds=0.0057   std_eps=0.0354
+       tube_viol_pct: 53.5310   std_seeds=1.4527   std_eps=9.7063
+     solve_median_ms: 1.2237   std_seeds=0.0657   std_eps=0.1011
+        solve_max_ms: 2.5791   std_seeds=0.3472   std_eps=1.7610
+        fallback_pct: 0.0000   std_seeds=0.0000   std_eps=0.0000
+[mpc] n_seeds=5 n_eps=100
+            pos_rmse: 0.0643   std_seeds=0.0008   std_eps=0.0061
+            vel_rmse: 0.0665   std_seeds=0.0032   std_eps=0.0142
+            peak_err: 0.0884   std_seeds=0.0013   std_eps=0.0078
+       tube_viol_pct: 0.0000   std_seeds=0.0000   std_eps=0.0000
+     solve_median_ms: 33.3930   std_seeds=0.2781   std_eps=0.8342
+        solve_max_ms: 58.2220   std_seeds=1.8692   std_eps=14.2257
+        fallback_pct: 0.0000   std_seeds=0.0000   std_eps=0.0000
+
+wrote /home/kmirakho/Documents/mobile-robotics/logs/multi_seed/summary.json

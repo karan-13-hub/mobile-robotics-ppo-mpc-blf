@@ -26,3 +26,4 @@ SCREEN N=14 tube=0.18 stride=2                           pos=0.1084 vel=0.1137 e
 FINAL  N=7 tube=0.12 stride=1                            pos=0.0658 vel=0.0646 ee=0.1868 peak=0.0910 fb=0.0% viol=0.0% crash=0% reach=100%
 FINAL  N=10 tube=0.12 stride=1                           pos=0.0694 vel=0.0683 ee=0.1892 peak=0.0940 fb=0.0% viol=0.0% crash=0% reach=100%
 FINAL  N=14 tube=0.12 stride=1                           pos=0.0722 vel=0.0730 ee=0.1921 peak=0.0971 fb=0.0% viol=0.0% crash=0% reach=100%
+FINAL  N=7 tube=0.15 stride=1                            pos=0.0757 vel=0.0676 ee=0.1889 peak=0.1075 fb=0.0% viol=0.0% crash=0% reach=100%

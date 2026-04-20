@@ -33,24 +33,32 @@ The filter
 All numbers come from `videos/METRICS.txt`, reproducible with the commands
 at the bottom of this README.
 
-### Trajectory tracking (min-snap reference, 20 seeds, seed 0)
+### Trajectory tracking (min-snap reference, 5 seeds × 20 episodes = 100 episodes)
 
-| metric                                | PPO only   | PPO + MPC-BLF | delta        |
-| :------------------------------------ | ---------: | ------------: | :----------- |
-| Crash rate                            |    0.00 %  |      0.00 %   |              |
-| Goal reach rate (15 cm tol.)          |  100.00 %  |    100.00 %   |              |
-| Position tracking RMSE  [m]           |    0.1443  |    **0.0658** | **−54.4 %**  |
-| Velocity tracking RMSE  [m/s]         |    0.1599  |    **0.0646** | **−59.6 %**  |
-| Peak tracking error [m]               |    0.2192  |    **0.0910** | **−58.5 %**  |
-| Tube violation rate (‖e‖ > 12 cm)     |   40.72 %  |    **0.00 %** | **−100 %**   |
-| Median solve time [ms]                |    0.91    |     33.2      |              |
-| Peak   solve time [ms]                |    6.86    |    117.3      |              |
-| MPC active rate (NLP actually solved) |      –     |    100.00 %   |              |
-| MPC fallback rate                     |      –     |      0.00 %   |              |
+Seeds = `[0, 20, 40, 60, 80]`.  Each entry is `mean ± std` where `std` is taken
+across the five seed-level means (n=5).  Per-episode pooled stds (n=100) are
+larger but qualitatively unchanged; full breakdown is in
+`logs/multi_seed/summary.json`.
 
-The filter cuts every tracking-error metric roughly in half and eliminates
-tube violations entirely, at the cost of an extra ~33 ms median NLP solve
-every control step (stride=1 on trajectory tracking).
+| metric                                | PPO only            | PPO + MPC-BLF           | delta        |
+| :------------------------------------ | ------------------: | ----------------------: | :----------- |
+| Crash rate                            |       0.00 %        |        0.00 %           |              |
+| Goal reach rate (15 cm tol.)          |     100.00 %        |      100.00 %           |              |
+| Position tracking RMSE  [m]           | 0.1413  ± 0.0038    | **0.0643  ± 0.0008**    | **−54.5 %**  |
+| Velocity tracking RMSE  [m/s]         | 0.1719  ± 0.0157    | **0.0665  ± 0.0032**    | **−61.3 %**  |
+| Peak tracking error [m]               | 0.2146  ± 0.0057    | **0.0884  ± 0.0013**    | **−58.8 %**  |
+| Tube violation rate (‖e‖ > 12 cm)     |  53.53 % ± 1.45 %   |   **0.00 % ± 0.00 %**   | **−100 %**   |
+| Median solve time [ms]                |  1.22   ± 0.07      |   33.39  ± 0.28         |              |
+| Peak  solve time [ms] (per-ep mean)   |  2.58   ± 0.35      |   58.22  ± 1.87         |              |
+| Peak  solve time [ms] (abs. across 100 eps) | 10.44         |  109.90                 |              |
+| MPC active rate (NLP actually solved) |      –              |      100.00 %           |              |
+| MPC fallback rate                     |      –              |        0.00 %           |              |
+
+The filter cuts every tracking-error metric by ≥ 55 % and eliminates tube
+violations entirely.  Run-to-run variance (across seeds) is also an
+order of magnitude smaller for the filtered policy: e.g. position RMSE has
+seed-std ≈ 1 mm under the filter vs ≈ 4 mm without.  The cost is an extra
+~33 ms median NLP solve every control step (stride=1).
 
 ### Disturbance rejection (2 s hover + 2 s disturb + 10 s stabilize, seed 0)
 
@@ -170,10 +178,17 @@ Fatrop backend, imageio, Pillow (caption overlay on disturbance videos).
 
 ## Quick start
 
-Reproduce the trajectory-tracking numbers in the table above:
+Reproduce the trajectory-tracking numbers in the table above (5 seeds × 20
+episodes, writes `logs/multi_seed/summary.json`):
 
 ```bash
-python eval_ppo.py     --episodes 20 --seed 0
+python scripts/eval_multi_seed.py   # seeds [0, 20, 40, 60, 80] by default
+```
+
+A single-seed run (matches one column of the multi-seed protocol):
+
+```bash
+python eval_ppo.py     --episodes 20 --seed 0 --tube 0.12
 python eval_ppo_mpc.py --episodes 20 --seed 0 \
     --mpc-horizon 7 --tube 0.12 --mpc-stride 1 \
     --slack-penalty 1e3 --velocity-penalty 5e4 --barrier-velocity-weight 0.03

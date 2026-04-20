@@ -1,23 +1,18 @@
-# Trajectory-tracking sweep winner
-# (5-ep screen of 18 configs; 20-ep validation confirmed the screen leader)
 horizon=7
 tube=0.12
 stride=1
-slack_penalty=1e3
-velocity_penalty=5e4
-barrier_velocity_weight=0.03
-screen_pos_rmse=0.0664
-screen_vel_rmse=0.0667
-screen_peak=0.0902
-screen_fallback_pct=0.0
-screen_tube_violation_pct=0.0
-val20_pos_rmse=0.0658
-val20_vel_rmse=0.0646
-val20_peak=0.0910
-val20_tube_violation_pct=0.0
-val20_fallback_pct=0.0
+rho=1000
+w_v=50000
+alpha=0.03
+final_pos_rmse=0.0658
+final_vel_rmse=0.0646
+final_ee_rmse=0.1868
+final_peak_e=0.091
+final_fallback=0.0
+final_tube_viol=0.0
+baseline_pos_rmse=0.0796
+baseline_vel_rmse=0.0895
 ppo_pos_rmse=0.1443
 ppo_vel_rmse=0.1599
-ppo_tube_violation_pct=40.72
-pos_rmse_reduction_pct=54.4
-vel_rmse_reduction_pct=59.6
+improved_over_user_best=True
+elapsed_s=6712.2
