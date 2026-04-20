@@ -1,0 +1,196 @@
+================================================================================
+ AerialManipulator evaluation metrics per video
+ PPO baseline vs PPO + MPC-BLF safety filter
+================================================================================
+
+MPC-BLF filter configuration
+----------------------------
+Trajectory tracking (min-snap reference):
+  horizon N = 7          tube delta = 0.12 m       stride = 1
+  slack rho = 1e3        vel penalty w_v = 5e4     barrier vel alpha = 0.03
+  beta_start = 0.95      beta_end = 0.15           smooth = 1e-2
+  solver = fatrop        dt = 10 ms
+  Reference velocity is fed into the filter, so both the BLF and the
+  stage-wise damping operate on velocity error v - v_ref.
+
+Disturbance rejection (hover + pulse disturbance):
+  horizon N = 7          tube delta = 0.12 m       stride = 2
+  slack rho = 1e4        vel penalty w_v = 5e4     barrier vel alpha = 0.1
+  beta_start = 0.95      beta_end = 0.15           smooth = 1e-2
+  solver = fatrop        dt = 10 ms
+
+================================================================================
+ 1. Trajectory tracking   (videos/ppo/* and videos/ppo_mpc_blf/*)
+================================================================================
+Each video is the complete min-snap trajectory + settle phase for one
+random start (env seed). Reach tol = 15 cm. Units: metres / metres/second.
+
+----- videos/ppo/ep00_seed0.mp4                                  PPO baseline -----
+  T_traj=3.00 s,  episode length=5.01 s
+  pos RMSE  = 0.122      vel RMSE   = 0.139      ee RMSE  = 0.218
+  final d   = 0.086      peak err   = 0.177      tube viol (>12 cm) = 29.7 %
+  crashed   = no         reached    = yes
+
+----- videos/ppo_mpc_blf/ep00_seed0.mp4                PPO + MPC-BLF (winner) -----
+  T_traj=3.00 s,  episode length=5.01 s
+  pos RMSE  = 0.062      vel RMSE   = 0.065      ee RMSE  = 0.183
+  final d   = 0.073      peak err   = 0.085      tube viol (>12 cm) = 0.0 %
+  MPC active= 100 %      fallback   = 0 %        median/peak solve = 33.2 / 111.2 ms
+  crashed   = no         reached    = yes
+
+----- videos/ppo/ep00_seed1.mp4                                  PPO baseline -----
+  T_traj=2.43 s,  episode length=4.43 s
+  pos RMSE  = 0.137      vel RMSE   = 0.237      ee RMSE  = 0.253
+  final d   = 0.037      peak err   = 0.214      tube viol (>12 cm) = 36.8 %
+  crashed   = no         reached    = yes
+
+----- videos/ppo_mpc_blf/ep00_seed1.mp4                PPO + MPC-BLF (winner) -----
+  T_traj=2.43 s,  episode length=4.43 s
+  pos RMSE  = 0.062      vel RMSE   = 0.086      ee RMSE  = 0.198
+  final d   = 0.047      peak err   = 0.087      tube viol (>12 cm) = 0.0 %
+  MPC active= 100 %      fallback   = 0 %        median/peak solve = 33.1 / 55.6 ms
+  crashed   = no         reached    = yes
+
+----- videos/ppo/ep00_seed2.mp4                                  PPO baseline -----
+  T_traj=2.76 s,  episode length=4.76 s
+  pos RMSE  = 0.138      vel RMSE   = 0.175      ee RMSE  = 0.249
+  final d   = 0.045      peak err   = 0.202      tube viol (>12 cm) = 42.5 %
+  crashed   = no         reached    = yes
+
+----- videos/ppo_mpc_blf/ep00_seed2.mp4                PPO + MPC-BLF (winner) -----
+  T_traj=2.76 s,  episode length=4.76 s
+  pos RMSE  = 0.065      vel RMSE   = 0.069      ee RMSE  = 0.204
+  final d   = 0.062      peak err   = 0.085      tube viol (>12 cm) = 0.0 %
+  MPC active= 100 %      fallback   = 0 %        median/peak solve = 33.0 / 65.3 ms
+  crashed   = no         reached    = yes
+
+--- Trajectory-tracking aggregate (20 deterministic episodes, seed 0) ---
+                         PPO         MPC-BLF       delta
+  pos RMSE  [m]         0.1443      0.0658      -54.4 %
+  vel RMSE  [m/s]       0.1599      0.0646      -59.6 %
+  ee  RMSE  [m]         0.2243      0.1868      -16.7 %
+  peak err  [m]         0.2192      0.0910      -58.5 %
+  tube viol  (>12 cm)   40.72 %      0.00 %
+  MPC fallback            --         0.00 %
+  goal reach rate       100.00 %   100.00 %
+  crash rate              0.00 %     0.00 %
+
+================================================================================
+ 2. Disturbance rejection   (videos/disturbance/*_ppo.mp4  and  *_mpc_blf.mp4)
+================================================================================
+Protocol: 2 s hover + 2 s disturbance + 10 s stabilize   (14 s total, seed 0)
+Phase 1 reports free hover; Phase 2 the active disturbance; Phase 3 the
+recovery after the disturbance ends.  Settling = first moment position error
+stays under 5 cm for >= 0.5 s after the disturbance ends.
+
+-------------------------------  wind-low  -----------------------------------
+Disturbance: lateral body force, 0.8 N peak along [0, 1, 0], 3 gusts over 2 s.
+
+  videos/disturbance/wind_low_ppo.mp4                            PPO baseline
+    Phase 1 hover     pos mean/max/RMSE = 0.0293 / 0.0596 / 0.0358
+                      vel mean/max/RMSE = 0.0474 / 0.1033 / 0.0578
+    Phase 2 disturb   pos mean/max/RMSE = 0.0547 / 0.0650 / 0.0577
+                      vel mean/max/RMSE = 0.0667 / 0.1411 / 0.0800
+    Phase 3 stabil.   pos mean/max/RMSE = 0.0560 / 0.0715 / 0.0563
+                      vel mean/max/RMSE = 0.0491 / 0.1639 / 0.0573
+    settled within 10 s = no
+    crashed = no
+
+  videos/disturbance/wind_low_mpc_blf.mp4              PPO + MPC-BLF (winner)
+    Phase 1 hover     pos mean/max/RMSE = 0.0258 / 0.0466 / 0.0298
+                      vel mean/max/RMSE = 0.0359 / 0.0849 / 0.0404
+    Phase 2 disturb   pos mean/max/RMSE = 0.0515 / 0.0572 / 0.0517
+                      vel mean/max/RMSE = 0.0465 / 0.1199 / 0.0563
+    Phase 3 stabil.   pos mean/max/RMSE = 0.0525 / 0.0565 / 0.0526
+                      vel mean/max/RMSE = 0.0151 / 0.1011 / 0.0204
+    settled within 10 s = yes (at 8.97 s after disturbance ends)
+    MPC solve median/peak = 42.2 / 100.4 ms     fallback = 0.0 %
+    crashed = no
+
+-------------------------------  wind-high  ----------------------------------
+Disturbance: lateral body force, 2.5 N peak along [0, 1, 0], 3 gusts over 2 s.
+
+  videos/disturbance/wind_high_ppo.mp4                           PPO baseline
+    Phase 1 hover     pos mean/max/RMSE = 0.0315 / 0.0596 / 0.0358
+                      vel mean/max/RMSE = 0.0531 / 0.1033 / 0.0578
+    Phase 2 disturb   pos mean/max/RMSE = 0.0604 / 0.0821 / 0.0609
+                      vel mean/max/RMSE = 0.1533 / 0.3397 / 0.1788
+    Phase 3 stabil.   pos mean/max/RMSE = 0.1052 / 0.5231 / 0.1379
+                      vel mean/max/RMSE = 0.4501 / 2.1411 / 0.6286
+    settled within 10 s = no
+    crashed = no
+
+  videos/disturbance/wind_high_mpc_blf.mp4             PPO + MPC-BLF (winner)
+    Phase 1 hover     pos mean/max/RMSE = 0.0258 / 0.0466 / 0.0298
+                      vel mean/max/RMSE = 0.0359 / 0.0849 / 0.0404
+    Phase 2 disturb   pos mean/max/RMSE = 0.0563 / 0.0864 / 0.0576
+                      vel mean/max/RMSE = 0.1598 / 0.3593 / 0.1946
+    Phase 3 stabil.   pos mean/max/RMSE = 0.0468 / 0.0746 / 0.0471
+                      vel mean/max/RMSE = 0.0497 / 0.2950 / 0.0671
+    settled within 10 s = yes (at 0.87 s after disturbance ends)
+    MPC solve median/peak = 42.1 / 117.3 ms     fallback = 0.6 %
+    crashed = no
+
+-------------------------------  arm-fold  -----------------------------------
+Disturbance: bent-elbow PD hold on 3-DoF arm (target = [0, -1.5, 1.5] rad).
+The arm stays folded through the stabilize phase, so the drone has to hold
+a shifted COM rather than transiently reject a pulse.
+
+  videos/disturbance/arm_fold_ppo.mp4                            PPO baseline
+    Phase 1 hover     pos mean/max/RMSE = 0.0315 / 0.0596 / 0.0358
+                      vel mean/max/RMSE = 0.0531 / 0.1033 / 0.0578
+    Phase 2 disturb   pos mean/max/RMSE = 0.0379 / 0.0607 / 0.0404
+                      vel mean/max/RMSE = 0.1205 / 0.2392 / 0.1313
+    Phase 3 stabil.   pos mean/max/RMSE = 0.1284 / 1.4479 / 0.2360
+                      vel mean/max/RMSE = 0.6713 / 6.0613 / 1.2042
+    **CRASHED** (episode ended at ~12 s; video saves 583 frames of 701)
+
+  videos/disturbance/arm_fold_mpc_blf.mp4              PPO + MPC-BLF (winner)
+    Phase 1 hover     pos mean/max/RMSE = 0.0258 / 0.0466 / 0.0298
+                      vel mean/max/RMSE = 0.0359 / 0.0849 / 0.0404
+    Phase 2 disturb   pos mean/max/RMSE = 0.0236 / 0.0461 / 0.0267
+                      vel mean/max/RMSE = 0.0465 / 0.0924 / 0.0500
+    Phase 3 stabil.   pos mean/max/RMSE = 0.0305 / 0.0355 / 0.0309
+                      vel mean/max/RMSE = 0.0219 / 0.0549 / 0.0235
+    settled within 10 s = yes (at 0.01 s after disturbance ends)
+    MPC solve median/peak = 41.8 / 103.9 ms     fallback = 0.0 %
+    crashed = no
+
+================================================================================
+ 3. Summary: Phase 3 stabilize (PPO vs MPC-BLF)
+================================================================================
+  mode        pos RMSE             pos max              vel RMSE             vel max              settled <10 s          crash
+              PPO     MPC-BLF      PPO     MPC-BLF      PPO     MPC-BLF      PPO     MPC-BLF      PPO  MPC-BLF          PPO  MPC-BLF
+  wind-low    0.0563  0.0526       0.0715  0.0565       0.0573  0.0204       0.1639  0.1011       no    yes (8.97)      no    no
+  wind-high   0.1379  0.0471       0.5231  0.0746       0.6286  0.0671       2.1411  0.2950       no    yes (0.87)      no    no
+  arm-fold    0.2360  0.0309       1.4479  0.0355       1.2042  0.0235       6.0613  0.0549       --    yes (0.01)      YES   no
+
+================================================================================
+ Reproduction commands
+================================================================================
+
+ # Trajectory tracking  (3 x 1-episode videos at seeds 0/1/2)
+ for s in 0 1 2; do
+   python eval_ppo.py --episodes 1 --seed $s \
+       --save-video videos/ppo/ep00_seed${s}.mp4 --video-episode 0
+   python eval_ppo_mpc.py --episodes 1 --seed $s \
+       --mpc-horizon 7 --tube 0.12 --mpc-stride 1 \
+       --slack-penalty 1e3 --velocity-penalty 5e4 --barrier-velocity-weight 0.03 \
+       --save-video videos/ppo_mpc_blf/ep00_seed${s}.mp4 --video-episode 0
+ done
+
+ # 20-episode aggregate trajectory-tracking metrics
+ python eval_ppo.py     --episodes 20 --seed 0
+ python eval_ppo_mpc.py --episodes 20 --seed 0 \
+     --mpc-horizon 7 --tube 0.12 --mpc-stride 1 \
+     --slack-penalty 1e3 --velocity-penalty 5e4 --barrier-velocity-weight 0.03
+
+ # Disturbance rejection  (each command saves one mode's video)
+ for m in wind-low wind-high arm-fold; do
+   python eval_ppo_disturbance.py --mode $m --seed 0 --stabilize-time 10.0 \
+       --save-video videos/disturbance/${m//-/_}_ppo.mp4
+   python eval_ppo_disturbance.py --mode $m --seed 0 --stabilize-time 10.0 --mpc-blf \
+       --tube 0.12 --mpc-stride 2 \
+       --slack-penalty 1e4 --velocity-penalty 5e4 --barrier-velocity-weight 0.1 \
+       --save-video videos/disturbance/${m//-/_}_mpc_blf.mp4
+ done

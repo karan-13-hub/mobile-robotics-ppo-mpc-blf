@@ -26,13 +26,16 @@ logs/best_model_*.zip
 logs/evaluations.npz
 logs/evaluations_*.npz
 
-# Generated media (except the canonical demo)
-videos/*.mp4
-!videos/ppo_7M_demo.mp4
-*.png
-!docs/*.png
+# Dev-time sweep run logs (the *.summary and *.decision snapshots
+# are small and are kept -- they document the tuning result).
+logs/tune_*_stdout.log
+logs/eval_ppo_20.txt
+logs/eval_ppo_mpc_blf_20_default.txt
 
 # Editors / OS
 .vscode/
 .idea/
 .DS_Store
+*.png
+!docs/*.png
+!presentation/**/*.png

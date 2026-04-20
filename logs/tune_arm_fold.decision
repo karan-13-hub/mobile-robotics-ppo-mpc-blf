@@ -1,0 +1,15 @@
+final_rho=10000
+final_alpha=0.1
+final_w_v=50000
+final_vel_stab_rmse=0.0223
+final_vel_stab_max=0.0453
+final_pos_stab_rmse=0.0293
+final_pos_stab_max=0.0354
+final_vel_disturb_rmse=0.05
+final_pos_disturb_rmse=0.0267
+ppo_vel_stab_rmse=0.2357
+ppo_pos_stab_rmse=0.0571
+vel_gain_vs_ppo=0.21339999999999998
+fallback_pct=0.0
+tag=WINNER (within pos budget)
+elapsed_s=746.6

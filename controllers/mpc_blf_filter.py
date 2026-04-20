@@ -121,6 +121,8 @@ class MPCBLFSafetyFilter:
         beta_end: float = 0.5,
         slack_penalty: float = 1e3,
         smooth_penalty: float = 1e-3,
+        velocity_penalty: float = 0.0,
+        barrier_velocity_weight: float = 0.0,
         outer_tube: float = 0.5,
         v_floor: float = 1e-4,
         solver: str = "ipopt",
@@ -133,6 +135,23 @@ class MPCBLFSafetyFilter:
         self.beta_end = float(beta_end)
         self.rho = float(slack_penalty)
         self.lambda_smooth = float(smooth_penalty)
+        # Stage-wise velocity damping: adds `w_v * sum_{k=1..N} ||v_k||^2`
+        # to the cost -- conceptually the D-term of a PID, applied to every
+        # planned future state rather than just the terminal one. The
+        # position-only BLF is indifferent between "stop at the setpoint"
+        # and "coast through it", which is what was exciting the tail
+        # oscillation on tight-tube stabilize phases; penalising velocity
+        # at every stage breaks that indifference over the whole horizon.
+        # Normalised by N so the weight scale is independent of horizon.
+        self.w_v = float(velocity_penalty)
+        # Velocity-aware BLF: extends the barrier from a pure position
+        # tube ||e_p||^2 < delta^2 to a (p, v) tube
+        #     z(e_p, e_v) = ||e_p||^2 + alpha * ||e_v||^2 < delta^2,
+        # so V(z) = z / (delta^2 - z) blows up when *either* the position
+        # error OR a weighted velocity error approaches the tube edge.
+        # Units of alpha: s^2 (lookahead-time squared). alpha = 0 -> legacy
+        # position-only BLF.
+        self.alpha_blf = float(barrier_velocity_weight)
         self.outer_tube = float(outer_tube)
         self.v_floor = float(v_floor)
         self.solver_name = str(solver).lower()
@@ -432,6 +451,11 @@ class MPCBLFSafetyFilter:
         x0_p = opti.parameter(nx)
         u_ppo_p = opti.parameter(nu)
         ref_p = opti.parameter(3, N + 1)
+        # Reference velocity at each horizon stage. Zero for hover/regulation;
+        # the env's min-snap trajectory provides non-zero v_ref. Feeding the
+        # filter the actual v_ref is what makes BLF/damping work on moving
+        # targets: "error" must be on velocity error, not absolute velocity.
+        ref_v_p = opti.parameter(3, N + 1)
 
         opti.subject_to(X[:, 0] == x0_p)
         for k in range(N):
@@ -447,26 +471,35 @@ class MPCBLFSafetyFilter:
         delta2 = self.delta ** 2
         outer2 = self.outer_tube ** 2
         v_floor = self.v_floor
+        alpha = self.alpha_blf
 
-        def V_expr(e):
-            e_sq = ca.dot(e, e)
-            return e_sq / ca.fmax(delta2 - e_sq, v_floor)
+        def z_expr(e_p, e_v):
+            """z = ||e_p||^2 + alpha * ||e_v||^2 (position + weighted vel)."""
+            return ca.dot(e_p, e_p) + alpha * ca.dot(e_v, e_v)
 
-        # Outer-tube hard fence at every stage (incl. k=0, which is just
-        # x_meas -- if this triggers, the filter catches it before the
-        # solve). Keeps V well-defined everywhere the NLP can wander.
+        def V_expr(e_p, e_v):
+            z = z_expr(e_p, e_v)
+            return z / ca.fmax(delta2 - z, v_floor)
+
+        # Outer-tube hard fence at every stage on the same combined norm,
+        # so V stays well-defined everywhere the NLP can wander. Velocity
+        # error is v - v_ref so a moving trajectory is not penalised for
+        # simply having non-zero velocity.
         for k in range(N + 1):
-            e_k = X[0:3, k] - ref_p[:, k]
-            opti.subject_to(ca.dot(e_k, e_k) <= outer2)
+            e_p_k = X[0:3, k] - ref_p[:, k]
+            e_v_k = X[3:6, k] - ref_v_p[:, k]
+            opti.subject_to(z_expr(e_p_k, e_v_k) <= outer2)
 
         # Softened BLF descent V_{k+1} <= beta_k * V_k + sigma,
         # sigma >= 0, k = 0 .. N-1.
         opti.subject_to(sigma >= 0.0)
-        e_0 = X[0:3, 0] - ref_p[:, 0]
-        V_prev = V_expr(e_0)
+        e_p0 = X[0:3, 0] - ref_p[:, 0]
+        e_v0 = X[3:6, 0] - ref_v_p[:, 0]
+        V_prev = V_expr(e_p0, e_v0)
         for k in range(N):
-            e_kp1 = X[0:3, k + 1] - ref_p[:, k + 1]
-            V_next = V_expr(e_kp1)
+            e_p_kp1 = X[0:3, k + 1] - ref_p[:, k + 1]
+            e_v_kp1 = X[3:6, k + 1] - ref_v_p[:, k + 1]
+            V_next = V_expr(e_p_kp1, e_v_kp1)
             opti.subject_to(V_next <= float(self.betas[k]) * V_prev + sigma)
             V_prev = V_next
 
@@ -474,6 +507,16 @@ class MPCBLFSafetyFilter:
         for k in range(1, N):
             cost += self.lambda_smooth * ca.sumsqr(U[:, k] - U[:, k - 1])
         cost += self.rho * sigma * sigma
+        # Stage-wise velocity damping (optional). D-term-style: penalises
+        # the velocity *tracking error* ||v_k - v_ref_k||^2 at every planned
+        # stage k = 1 .. N, normalised by N so the weight scale does not
+        # change with horizon length. Using tracking error (not absolute
+        # velocity) is what lets this term behave well on moving trajectories.
+        if self.w_v > 0.0:
+            vel_cost = 0.0
+            for k in range(1, N + 1):
+                vel_cost = vel_cost + ca.sumsqr(X[3:6, k] - ref_v_p[:, k])
+            cost += (self.w_v / N) * vel_cost
         opti.minimize(cost)
 
         self._configure_solver(opti)
@@ -485,6 +528,7 @@ class MPCBLFSafetyFilter:
         self._x0_p = x0_p
         self._u_ppo_p = u_ppo_p
         self._ref_p = ref_p
+        self._ref_v_p = ref_v_p
 
     # ------------------------------------------------------------------ #
     # Public API                                                          #
@@ -500,6 +544,7 @@ class MPCBLFSafetyFilter:
         x_meas: np.ndarray,
         a_ppo_full: np.ndarray,
         ref_pos_traj: np.ndarray,
+        ref_vel_traj: np.ndarray | None = None,
     ) -> Tuple[np.ndarray, dict]:
         """Filter PPO's action through the hard-BLF MPC.
 
@@ -536,26 +581,37 @@ class MPCBLFSafetyFilter:
                 f"ref_pos_traj must have shape ({self.N + 1}, 3); "
                 f"got {ref_pos_traj.shape}"
             )
+        if ref_vel_traj is None:
+            ref_vel_traj = np.zeros_like(ref_pos_traj)
+        else:
+            ref_vel_traj = np.asarray(ref_vel_traj, dtype=np.float64)
+            if ref_vel_traj.shape != (self.N + 1, 3):
+                raise ValueError(
+                    f"ref_vel_traj must have shape ({self.N + 1}, 3); "
+                    f"got {ref_vel_traj.shape}"
+                )
 
         u_ppo_rotor = self._normalized_to_motor(a_ppo_full[:4])
 
-        # Outer-tube safety fence: V is only a valid barrier where
-        # ||e|| < delta; the outer_tube is a much wider safety limit
-        # (default 0.5 m) that keeps the NLP well-posed. If we are
-        # already past that, no safety claim is possible -- hand back to
-        # PPO rather than feed the solver a nonsense start.
+        # Outer-tube safety fence on the combined (p, v) norm
+        # z = ||e_p||^2 + alpha * ||e_v||^2. V is only a valid barrier
+        # where z < delta^2; the outer_tube is a much wider safety limit
+        # that keeps the NLP well-posed. If we are already past that,
+        # no safety claim is possible -- hand back to PPO rather than
+        # feed the solver a nonsense start.
         e0 = x_meas[0:3] - ref_pos_traj[0]
-        e0_sq = float(np.dot(e0, e0))
+        ev0 = x_meas[3:6] - ref_vel_traj[0]
+        z0 = float(np.dot(e0, e0) + self.alpha_blf * np.dot(ev0, ev0))
         outer2 = self.outer_tube ** 2
-        if e0_sq >= outer2:
+        if z0 >= outer2:
             info["fallback"] = True
             info["fallback_reason"] = "outside_outer_tube"
             self.reset()
             return a_out, info
 
         # V(e_0) for diagnostics.
-        denom0 = max(self.delta ** 2 - e0_sq, self.v_floor)
-        info["V0"] = float(e0_sq / denom0)
+        denom0 = max(self.delta ** 2 - z0, self.v_floor)
+        info["V0"] = float(z0 / denom0)
 
         # ---- MPC solve (always active) ---------------------------------- #
         info["mpc_active"] = True
@@ -563,6 +619,7 @@ class MPCBLFSafetyFilter:
         self._opti.set_value(self._x0_p, x_meas)
         self._opti.set_value(self._u_ppo_p, u_ppo_rotor)
         self._opti.set_value(self._ref_p, ref_pos_traj.T)
+        self._opti.set_value(self._ref_v_p, ref_vel_traj.T)
 
         if self._warm_X is None:
             X_init = np.tile(x_meas[:, None], (1, self.N + 1))
@@ -598,9 +655,11 @@ class MPCBLFSafetyFilter:
         a_out[0:4] = self._motor_to_normalized(u0).astype(np.float32)
 
         e_N = X_sol[0:3, -1] - ref_pos_traj[-1]
+        ev_N = X_sol[3:6, -1] - ref_vel_traj[-1]
         eN_sq = float(np.dot(e_N, e_N))
-        denomN = max(self.delta ** 2 - eN_sq, self.v_floor)
-        info["VN"] = float(eN_sq / denomN)
+        zN = float(eN_sq + self.alpha_blf * np.dot(ev_N, ev_N))
+        denomN = max(self.delta ** 2 - zN, self.v_floor)
+        info["VN"] = float(zN / denomN)
         info["sigma"] = float(max(sigma_sol, 0.0))
         info["terminal_err"] = float(np.sqrt(eN_sq))
         info["u_changed_norm"] = float(np.linalg.norm(u0 - u_ppo_rotor))

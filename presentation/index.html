@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>PPO + MPC-BLF safety filter for an aerial manipulator</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.5/dist/reset.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.5/dist/reveal.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.5/dist/theme/white.css" id="theme" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.5/plugin/highlight/monokai.css" />
+
+  <style>
+    :root {
+      --accent: #2c6df5;
+      --muted: #6b7280;
+      --ink:   #1f2937;
+      --bg:    #ffffff;
+      --soft:  #f3f4f6;
+      --line:  #e5e7eb;
+    }
+    .reveal { color: var(--ink); font-family: "Inter", "Helvetica Neue", system-ui, sans-serif; }
+    .reveal .slides section {
+      text-align: left;
+      height: 100%;
+    }
+    .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+      text-transform: none;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+      margin: 0 0 0.4em 0;
+    }
+    .reveal h1 { font-size: 2.0em; }
+    .reveal h2 { font-size: 1.5em; }
+    .reveal h3 { font-size: 1.1em; color: var(--muted); font-weight: 500; margin-bottom: 0.6em; }
+    .reveal p, .reveal li { font-size: 0.80em; line-height: 1.4; }
+    .reveal ul { margin-left: 1.1em; }
+    .reveal li + li { margin-top: 0.25em; }
+    .reveal code { background: var(--soft); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+    .reveal pre { font-size: 0.55em; box-shadow: none; border: 1px solid var(--line); border-radius: 6px; }
+    .reveal .accent { color: var(--accent); }
+    .reveal .muted  { color: var(--muted); }
+    .reveal hr { border: 0; border-top: 1px solid var(--line); margin: 0.8em 0; }
+
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+    .cols.tight { gap: 20px; }
+    .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; align-items: start; }
+
+    .kicker {
+      display: inline-block;
+      font-size: 0.65em;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.65em;
+      margin-top: 0.4em;
+    }
+    table th, table td {
+      text-align: left;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--line);
+    }
+    table th {
+      color: var(--muted);
+      font-weight: 500;
+      border-bottom: 1px solid #d1d5db;
+    }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    tr.highlight td { background: #eef3ff; }
+    tr.bad td { background: #fff4f4; }
+
+    .media-caption { font-size: 0.55em; color: var(--muted); margin-top: 6px; }
+
+    video, img.fit {
+      width: 100%;
+      height: auto;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      display: block;
+    }
+
+    .stat-row { display: flex; gap: 24px; margin-top: 8px; flex-wrap: wrap; }
+    .stat {
+      border-left: 3px solid var(--accent);
+      padding: 2px 14px;
+      min-width: 120px;
+    }
+    .stat .val { font-size: 1.4em; font-weight: 700; line-height: 1; color: var(--ink); }
+    .stat .lab { font-size: 0.60em; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--soft);
+      color: var(--ink);
+      font-size: 0.60em;
+      margin-right: 6px;
+    }
+    .tag.win { background: #eef3ff; color: var(--accent); }
+    .tag.bad { background: #fde8e8; color: #b42318; }
+
+    .footer {
+      position: absolute;
+      bottom: 18px; left: 40px; right: 40px;
+      display: flex; justify-content: space-between;
+      color: var(--muted); font-size: 0.55em;
+      border-top: 1px solid var(--line);
+      padding-top: 8px;
+    }
+
+    .reveal .progress { color: var(--accent); }
+
+    pre.ascii {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      font-family: "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
+      font-size: 0.55em;
+      padding: 12px 14px;
+      border-radius: 6px;
+      white-space: pre;
+    }
+  </style>
+</head>
+<body>
+
+<div class="reveal">
+  <div class="slides">
+
+    <!-- ======================================================= Title -->
+    <section data-background-color="#ffffff">
+      <span class="kicker">16-748 Mobile Robotics · Final Project</span>
+      <h1>Safe trajectory tracking for an aerial manipulator</h1>
+      <h3>PPO policy filtered by an MPC with a Barrier Lyapunov Function</h3>
+
+      <div class="stat-row" style="margin-top: 30px;">
+        <div class="stat"><div class="val">−54%</div><div class="lab">position RMSE</div></div>
+        <div class="stat"><div class="val">−59%</div><div class="lab">peak error</div></div>
+        <div class="stat"><div class="val">40.7% → 0%</div><div class="lab">tube violations</div></div>
+        <div class="stat"><div class="val">0 / 1</div><div class="lab">arm-fold crashes</div></div>
+      </div>
+
+      <p class="muted" style="margin-top: 28px;">
+        Skydio X2 quadrotor + 3-DoF arm in MuJoCo &nbsp;·&nbsp; PPO (7 M steps, SB3) &nbsp;·&nbsp;
+        CasADi receding-horizon NLP (Fatrop)
+      </p>
+    </section>
+
+    <!-- ======================================================= Problem 1 -->
+    <section>
+      <span class="kicker">1 · Problem</span>
+      <h2>Aerial manipulation is where learned control stops being safe</h2>
+      <div class="cols">
+        <div>
+          <ul>
+            <li>Base: <b>Skydio X2</b> quadrotor. Payload: <b>3-DoF arm</b> → time-varying
+              mass distribution and COM offset.</li>
+            <li>Task: follow a randomly-sampled <b>7<sup>th</sup>-order min-snap</b>
+              trajectory to a 15 cm goal tolerance, then hover.</li>
+            <li>PPO alone tracks well <i>on average</i> but transient peaks blow
+              past the safety tube and a folded arm can crash it outright.</li>
+            <li>We want the learned reactivity <b>and</b> a provable envelope —
+              without retraining the policy.</li>
+          </ul>
+          <div style="margin-top: 14px;">
+            <span class="tag">MuJoCo 3</span>
+            <span class="tag">Stable-Baselines3</span>
+            <span class="tag">CasADi + Fatrop</span>
+            <span class="tag">Gymnasium</span>
+          </div>
+        </div>
+        <div>
+          <video src="../videos/ppo_7M_demo.mp4" muted autoplay loop playsinline></video>
+          <div class="media-caption">PPO-only (7 M steps) — visually clean but lateral
+            excursions cross the 12&nbsp;cm tube ~40% of the time.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= Problem 2 -->
+    <section>
+      <span class="kicker">1 · Problem</span>
+      <h2>Three concrete failure modes we targeted</h2>
+      <div class="cols-3">
+        <div>
+          <h3>① Lateral tube violations</h3>
+          <p>During aggressive min-snap segments PPO peaks at <b>22&nbsp;cm</b> lateral
+            error — 83% bigger than our 12&nbsp;cm corridor.</p>
+        </div>
+        <div>
+          <h3>② Wind gusts</h3>
+          <p>A 2.5&nbsp;N lateral pulse (wind-high) drives the baseline into a
+            <b>52&nbsp;cm</b> post-pulse swing; it never settles within 10 s.</p>
+        </div>
+        <div>
+          <h3>③ Arm folding (COM shift)</h3>
+          <p>Holding the arm at <code>[0, −1.5, 1.5]</code> rad shifts the COM off-axis.
+            PPO <b>crashes</b> after ~12 s; it was never trained on this.</p>
+        </div>
+      </div>
+      <hr />
+      <p class="muted">
+        Goal: keep the base-position error strictly inside a
+        <code>δ</code>-tube at every control step, <i>and</i> stay
+        close to PPO whenever PPO is already safe.
+      </p>
+    </section>
+
+    <!-- ======================================================= Approach 1 -->
+    <section>
+      <span class="kicker">2 · Approach</span>
+      <h2>Architecture: PPO proposes, MPC-BLF filters</h2>
+<pre class="ascii">
+ reference            PPO policy              MPC-BLF filter          MuJoCo
+  min-snap     ─▶  (learned, reactive)  ─▶  (model-based, safe)  ─▶   simulation
+  (p*, v*)           u_ppo ∈ R⁷              u_safe ∈ R⁷              12-state
+</pre>
+      <div class="cols tight">
+        <div>
+          <h3>PPO — reactive layer</h3>
+          <ul>
+            <li>Gymnasium env, 7-D action (4 rotors + 3 arm joints).</li>
+            <li>Obs: <code>qpos</code> + <code>qvel</code> + relative pose/vel to next ref point.</li>
+            <li>Trained 5 M + 2 M steps with SB3 PPO, 16 parallel envs.</li>
+            <li>Deterministic eval at ~0.9 ms per step.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>MPC-BLF — safety layer</h3>
+          <ul>
+            <li>Receding horizon NLP over the full <b>12-state nonlinear quad</b>
+              (pos, vel, Euler, body-rate).</li>
+            <li>Solves for <code>U<sub>0..N-1</sub></code> that minimise
+              <code>‖U<sub>0</sub> − u<sub>ppo</sub>‖²</code> — closest safe thing to what PPO asked for.</li>
+            <li>Only touches the 4 rotors; arm joints pass through.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= Approach 2 -->
+    <section>
+      <span class="kicker">2 · Approach</span>
+      <h2>The Barrier Lyapunov safety constraint</h2>
+
+      <div class="cols tight">
+        <div>
+<pre class="ascii">V(e) = ‖e‖² / (δ² − ‖e‖²),    e = p − p*
+V(e_{k+1}) ≤ β_k · V(e_k) + σ,   σ ≥ 0,  k = 0…N−1
+
+β_start = 0.95   (loose, near-term: errors are ≈ unavoidable)
+β_end   = 0.15   (strict, horizon end: force contraction)
+ρ·σ²    in cost  (ρ = 1e3 – 3e3)</pre>
+          <ul style="margin-top: 10px;">
+            <li><b>Finite V ⇔ strictly inside the δ-tube</b> → V→∞ near the boundary
+              makes it impossible to choose a plan that exits.</li>
+            <li><b>Softened descent</b>: scalar slack <code>σ</code> absorbs the motor-envelope
+              infeasibility, so the NLP almost never aborts.</li>
+            <li><b>Velocity-aware barrier</b>:
+              <code>z = ‖e<sub>p</sub>‖² + α‖e<sub>v</sub>‖²</code>, penalises approaching the
+              tube <i>with speed</i>.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>What the filter guarantees</h3>
+          <ul>
+            <li>When <code>σ ≈ 0</code>, the planned trajectory is
+              <b>forward-invariant</b> in the δ-tube over the horizon.</li>
+            <li>Hard fence <code>‖e‖ ≤ outer_tube</code> keeps V well-defined
+              everywhere the NLP can wander.</li>
+            <li><b>Fallback</b> to raw <code>u<sub>ppo</sub></code> if the hard
+              constraints become infeasible — measured rate ≤ 0.62%.</li>
+          </ul>
+          <h3 style="margin-top: 20px;">Solver choice</h3>
+          <p>Fatrop (structure-exploiting IP for OCPs) beat IPOPT by ~3× in
+             median solve time and SQP in robustness.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= Approach 3 -->
+    <section>
+      <span class="kicker">2 · Approach</span>
+      <h2>Tuned defaults and what each knob does</h2>
+      <table>
+        <tr><th>flag</th><th>symbol</th><th>traj</th><th>disturb</th><th>role</th></tr>
+        <tr><td><code>--tube</code></td><td class="num">δ</td><td class="num">0.12 m</td><td class="num">0.12 m</td><td>BLF tube radius; finite V iff inside</td></tr>
+        <tr><td><code>--mpc-horizon</code></td><td class="num">N</td><td class="num">7</td><td class="num">7</td><td>plan length at <code>dt = 10 ms</code></td></tr>
+        <tr><td><code>--mpc-stride</code></td><td class="num">–</td><td class="num">1</td><td class="num">2</td><td>NLP solved every <i>k</i> env steps</td></tr>
+        <tr><td><code>--beta-start</code></td><td class="num">β₀</td><td class="num">0.95</td><td class="num">0.95</td><td>loose near-term contraction</td></tr>
+        <tr><td><code>--beta-end</code></td><td class="num">β<sub>N−1</sub></td><td class="num">0.15</td><td class="num">0.15</td><td>strict terminal contraction</td></tr>
+        <tr><td><code>--slack-penalty</code></td><td class="num">ρ</td><td class="num">1e3</td><td class="num">1e4</td><td>weight on ρ·σ² in cost</td></tr>
+        <tr><td><code>--velocity-penalty</code></td><td class="num">w<sub>v</sub></td><td class="num">5e4</td><td class="num">5e4</td><td>D-term on ‖v − v*‖²</td></tr>
+        <tr><td><code>--barrier-velocity-weight</code></td><td class="num">α</td><td class="num">0.03</td><td class="num">0.1</td><td>vel-aware barrier lookahead²</td></tr>
+        <tr><td><code>--smooth-penalty</code></td><td class="num">λ</td><td class="num">1e-2</td><td class="num">1e-2</td><td>‖ΔU<sub>k</sub>‖² smoothing</td></tr>
+        <tr><td><code>--mpc-solver</code></td><td class="num">–</td><td class="num">fatrop</td><td class="num">fatrop</td><td>structure-exploiting IP</td></tr>
+      </table>
+      <p class="muted" style="margin-top: 10px;">
+        Trajectory defaults picked by a grid sweep (<code>scripts/tune_trajectory.py</code>); disturbance defaults from
+        <code>scripts/tune_wind_high.py</code> + <code>tune_arm_fold.py</code>. Only σ-penalty and α change between regimes.
+      </p>
+    </section>
+
+    <!-- ======================================================= Results 1 -->
+    <section>
+      <span class="kicker">3 · Results  ·  Trajectory tracking</span>
+      <h2>Side-by-side on the same seed, same goal</h2>
+      <div class="cols tight">
+        <div>
+          <h3>PPO only  ·  seed 0</h3>
+          <video src="../videos/ppo/ep00_seed0.mp4" muted autoplay loop playsinline></video>
+          <div class="media-caption">pos RMSE <b>0.122 m</b>  ·  peak err <b>0.177 m</b>  ·  tube viol <b>29.7%</b></div>
+        </div>
+        <div>
+          <h3 class="accent">PPO + MPC-BLF  ·  seed 0</h3>
+          <video src="../videos/ppo_mpc_blf/ep00_seed0.mp4" muted autoplay loop playsinline></video>
+          <div class="media-caption">pos RMSE <b>0.062 m</b>  ·  peak err <b>0.085 m</b>  ·  tube viol <b>0.0%</b></div>
+        </div>
+      </div>
+      <div class="stat-row" style="margin-top: 20px;">
+        <div class="stat"><div class="val">2.0×</div><div class="lab">tighter pos RMSE</div></div>
+        <div class="stat"><div class="val">2.1×</div><div class="lab">lower peak error</div></div>
+        <div class="stat"><div class="val">0%</div><div class="lab">MPC fallback</div></div>
+        <div class="stat"><div class="val">33 ms</div><div class="lab">median solve</div></div>
+      </div>
+    </section>
+
+    <!-- ======================================================= Results 2 -->
+    <section>
+      <span class="kicker">3 · Results  ·  Trajectory tracking</span>
+      <h2>20-episode aggregate</h2>
+      <div class="cols tight">
+        <div>
+          <img src="plots/trajectory_tracking.png" class="fit" alt="trajectory tracking bar chart" />
+        </div>
+        <div>
+          <img src="plots/tube_violation.png" class="fit" alt="tube violation" />
+        </div>
+      </div>
+      <table style="margin-top: 14px;">
+        <tr><th>metric</th><th class="num">PPO only</th><th class="num">PPO + MPC-BLF</th><th class="num">Δ</th></tr>
+        <tr class="highlight"><td>position RMSE [m]</td><td class="num">0.1443</td><td class="num"><b>0.0658</b></td><td class="num">−54.4%</td></tr>
+        <tr class="highlight"><td>velocity RMSE [m/s]</td><td class="num">0.1599</td><td class="num"><b>0.0646</b></td><td class="num">−59.6%</td></tr>
+        <tr class="highlight"><td>peak tracking error [m]</td><td class="num">0.2192</td><td class="num"><b>0.0910</b></td><td class="num">−58.5%</td></tr>
+        <tr class="highlight"><td>tube violation rate (&gt;12 cm)</td><td class="num">40.72%</td><td class="num"><b>0.00%</b></td><td class="num">−40.72 pp</td></tr>
+        <tr><td>goal reach rate (15 cm tol.)</td><td class="num">100%</td><td class="num">100%</td><td class="num">—</td></tr>
+        <tr><td>crash rate</td><td class="num">0%</td><td class="num">0%</td><td class="num">—</td></tr>
+      </table>
+    </section>
+
+    <!-- ======================================================= Results 3 -->
+    <section>
+      <span class="kicker">3 · Results  ·  Disturbance rejection</span>
+      <h2>Arm-fold — the only regime where PPO actually crashes</h2>
+      <div class="cols tight">
+        <div>
+          <h3>PPO only</h3>
+          <video src="../videos/disturbance/arm_fold_ppo.mp4" muted autoplay loop playsinline></video>
+          <div class="media-caption">
+            Crashed at ~12 s. Phase-3 peak deviation <b>1.45 m</b>,
+            peak vel <b>6.06 m/s</b>.
+          </div>
+        </div>
+        <div>
+          <h3 class="accent">PPO + MPC-BLF</h3>
+          <video src="../videos/disturbance/arm_fold_mpc_blf.mp4" muted autoplay loop playsinline></video>
+          <div class="media-caption">
+            Settles <b>0.01 s</b> after disturbance ends. Peak dev <b>3.5 cm</b>, peak vel <b>5 cm/s</b>.
+          </div>
+        </div>
+      </div>
+      <img src="plots/disturbance_recovery.png" class="fit" style="margin-top: 14px;" alt="disturbance recovery" />
+    </section>
+
+    <!-- ======================================================= Failures / tradeoffs -->
+    <section>
+      <span class="kicker">4 · What didn't / still doesn't work</span>
+      <h2>Honest limitations</h2>
+
+      <div class="cols tight">
+        <div>
+          <h3>4a. Compute cost is real</h3>
+          <img src="plots/solve_cost.png" class="fit" alt="solve cost" />
+          <p class="muted" style="margin-top: 8px; font-size: 0.7em;">
+            Fatrop + stride=3 gives a 33% duty cycle and ~40 ms median solve.
+            Stride=1 is needed for the tightest tracking, but doubles compute.
+          </p>
+        </div>
+        <div>
+          <h3>4b. Things I tried that failed</h3>
+          <ul>
+            <li><b>Zero-order hold</b> between stride solves destabilised the inner
+              attitude loop — replaced with "apply raw PPO between solves".</li>
+            <li><b>Small-angle linearised dynamics</b> in the MPC: plans
+              disagreed with MuJoCo during aggressive banked turns. Fixed with
+              the full <code>R(φ, θ, ψ)</code> thrust rotation + Coriolis.</li>
+            <li><b>Hard BLF descent</b> (no slack): NLP went infeasible at motor
+              saturation. Scalar slack <code>σ</code> with heavy <code>ρ·σ²</code>
+              penalty cured it without loosening the tube.</li>
+            <li><b>Position-only barrier</b>: drone coasted through the setpoint.
+              Velocity-aware barrier + stage-wise velocity cost broke the
+              indifference.</li>
+            <li><b>PPO-only disturbance training</b>: OOD arm-fold regime still
+              crashes; the <i>filter</i> is what rescues it, not better data.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= Challenges / Lessons -->
+    <section>
+      <span class="kicker">5 · Challenges & lessons</span>
+      <h2>Things I thought would be trivial that weren't</h2>
+      <div class="cols tight">
+        <div>
+          <h3>Sign stability of ZYX Euler from MuJoCo quaternions</h3>
+          <p>Double-cover flips in <code>q<sub>w</sub></code> caused the MPC
+             to see ±180° "jumps" and plan huge corrective torques.
+             Fix: canonicalise <code>q<sub>w</sub> ≥ 0</code> before
+             extracting Euler angles.</p>
+
+          <h3>MuJoCo actuator allocation ≠ "textbook" X-config</h3>
+          <p>The M matrix has to come from
+             <code>actuator_gear</code> × <code>site_pos</code>. Hard-coding a
+             symmetric X-config silently offset <code>τ<sub>z</sub></code>,
+             giving yaw drift in long episodes.</p>
+        </div>
+        <div>
+          <h3>Warm-starting CasADi is make-or-break</h3>
+          <p>Cold start: ~140 ms and occasional Fatrop stalls.
+             Warm start from previous solution:  ~40 ms median and almost no
+             fallbacks.</p>
+
+          <h3>Tuning a soft barrier is a 3-D fight</h3>
+          <p><code>(β-schedule, ρ, α)</code> all trade off solve time vs.
+             aggressiveness vs. damping. Separate grid sweeps per regime
+             (trajectory vs. disturbance) were needed; one-size-fits-all was
+             worse at both.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= Wind Bonus -->
+    <section>
+      <span class="kicker">3 · Results (extra)  ·  Wind gusts</span>
+      <h2>High wind: PPO blows up, MPC-BLF damps it out</h2>
+      <div class="cols tight">
+        <div>
+          <h3>PPO  ·  wind-high (2.5 N pulse)</h3>
+          <video src="../videos/disturbance/wind_high_ppo.mp4" muted autoplay loop playsinline></video>
+          <div class="media-caption">Phase-3 peak <b>52 cm</b>, peak vel <b>2.14 m/s</b>, never settles.</div>
+        </div>
+        <div>
+          <h3 class="accent">PPO + MPC-BLF  ·  wind-high</h3>
+          <video src="../videos/disturbance/wind_high_mpc_blf.mp4" muted autoplay loop playsinline></video>
+          <div class="media-caption">Settles <b>0.87 s</b> after pulse ends, peak <b>7 cm</b>.</div>
+        </div>
+      </div>
+      <table style="margin-top: 14px;">
+        <tr><th>mode</th><th class="num">Δ pos max (PPO)</th><th class="num">Δ pos max (MPC-BLF)</th><th class="num">settle &lt; 10 s</th><th class="num">crash</th></tr>
+        <tr><td>wind-low</td><td class="num">0.0715</td><td class="num">0.0565</td><td>yes (8.97 s)</td><td>no / no</td></tr>
+        <tr class="highlight"><td>wind-high</td><td class="num">0.5231</td><td class="num"><b>0.0746</b></td><td>no → yes (0.87 s)</td><td>no / no</td></tr>
+        <tr class="bad"><td>arm-fold</td><td class="num">1.4479</td><td class="num"><b>0.0355</b></td><td>— → yes (0.01 s)</td><td><b>YES</b> / no</td></tr>
+      </table>
+    </section>
+
+    <!-- ======================================================= Anything else -->
+    <section>
+      <span class="kicker">6 · Anything else</span>
+      <h2>Takeaways for future learned-controller users</h2>
+      <ul>
+        <li><b>Filter, don't re-train.</b> A thin model-based safety layer fixed
+          a catastrophic OOD failure (arm-fold) without touching PPO weights.
+          Cheaper than curriculum + wind randomisation during training.</li>
+        <li><b>Barrier Lyapunov &gt; plain CBF here.</b> A BLF is its own invariance
+          certificate; you get a forward-invariant set with one inequality per
+          stage, no extra class-𝒦 tuning.</li>
+        <li><b>Velocity-aware barriers matter for moving setpoints.</b> A
+          position-only barrier lets the drone coast through the goal at
+          speed; <code>z = ‖e<sub>p</sub>‖² + α‖e<sub>v</sub>‖²</code> removes that
+          degeneracy.</li>
+        <li><b>Fatrop + warm-start got a real-time-ish receding-horizon NLP
+          onto a 7-DoF learned system</b> in CasADi, ~40 ms / solve, on CPU.</li>
+        <li><b>Natural next steps.</b> Hardware transfer, learning β and α
+          from data, and composing the same filter with a flow-matching
+          trajectory generator instead of a hand-designed min-snap reference.</li>
+      </ul>
+      <hr />
+      <p class="muted" style="font-size: 0.7em;">
+        Repo: <code>controllers/mpc_blf_filter.py</code> (safety filter) ·
+        <code>env/aerial_manipulator.py</code> (Gymnasium env) ·
+        <code>eval_ppo_mpc.py</code> (trajectory eval) ·
+        <code>eval_ppo_disturbance.py</code> (disturbance eval) ·
+        <code>videos/METRICS.txt</code> (all numbers in these slides).
+      </p>
+    </section>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.0.5/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.0.5/plugin/highlight/highlight.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: "c/t",
+    controlsTutorial: false,
+    transition: "none",
+    backgroundTransition: "none",
+    width:  1280,
+    height: 800,
+    margin: 0.04,
+    plugins: [RevealHighlight]
+  });
+</script>
+
+</body>
+</html>

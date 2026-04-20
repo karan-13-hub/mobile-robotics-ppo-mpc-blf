@@ -1,0 +1,42 @@
+# baseline {'rho': 10000.0, 'w_v': 50000.0, 'alpha': 0.1, 'stride': 2, 'vel_max': 0.295, 'vel_rmse': 0.0671, 'pos_max': 0.0746, 'pos_rmse': 0.0471}
+# fixed horizon=7 tube=0.12
+# constraints: fb<=2.0% pos_max<=0.09 vel_rmse<=0.09
+# objective: minimise Phase 3 vel_max
+
+rho=10000 w_v=50000 alpha=0.1 stride=1                   p3 pos=0.3484/1.2313 vel=2.2150/8.1415 fb=48.8% crash=True
+rho=10000 w_v=50000 alpha=0.1 stride=2                   p3 pos=0.0471/0.0746 vel=0.0671/0.2950 fb=0.6% crash=False settle=0.87s
+rho=10000 w_v=50000 alpha=0.3 stride=1                   p3 pos=0.4214/1.7565 vel=1.6645/5.2721 fb=69.8% crash=True
+rho=10000 w_v=50000 alpha=0.3 stride=2                   p3 pos=0.0467/0.0606 vel=0.0562/0.2866 fb=4.7% crash=False settle=0.33s
+rho=10000 w_v=50000 alpha=0.6 stride=1                   p3 pos=0.1962/1.2957 vel=1.0792/7.9956 fb=76.2% crash=True settle=1.61s
+rho=10000 w_v=50000 alpha=0.6 stride=2                   p3 pos=0.0465/0.0519 vel=0.0460/0.2131 fb=6.5% crash=False settle=0.24s
+rho=10000 w_v=200000 alpha=0.1 stride=1                  p3 pos=0.3457/1.3888 vel=1.7748/6.9609 fb=61.3% crash=True
+rho=10000 w_v=200000 alpha=0.1 stride=2                  p3 pos=0.0406/0.0855 vel=0.0775/0.3222 fb=1.5% crash=False settle=0.23s
+rho=10000 w_v=200000 alpha=0.3 stride=1                  p3 pos=0.2754/1.3548 vel=1.8731/8.6422 fb=66.7% crash=True
+rho=10000 w_v=200000 alpha=0.3 stride=2                  p3 pos=0.0495/0.0653 vel=0.0577/0.3151 fb=4.5% crash=False settle=0.36s
+rho=10000 w_v=200000 alpha=0.6 stride=1                  p3 pos=0.4145/1.3168 vel=1.8449/6.5557 fb=65.2% crash=True
+rho=10000 w_v=200000 alpha=0.6 stride=2                  p3 pos=0.0457/0.0510 vel=0.0425/0.2318 fb=4.9% crash=False settle=0.01s
+rho=10000 w_v=500000 alpha=0.1 stride=1                  p3 pos=0.6197/1.3598 vel=3.2365/7.7849 fb=87.6% crash=True
+rho=10000 w_v=500000 alpha=0.1 stride=2                  p3 pos=0.0397/0.0933 vel=0.0795/0.3533 fb=1.6% crash=False settle=0.22s
+rho=10000 w_v=500000 alpha=0.3 stride=1                  p3 pos=0.8140/1.3757 vel=2.6460/6.1162 fb=90.3% crash=True
+rho=10000 w_v=500000 alpha=0.3 stride=2                  p3 pos=0.0458/0.0681 vel=0.0640/0.3450 fb=4.9% crash=False settle=0.39s
+rho=10000 w_v=500000 alpha=0.6 stride=1                  p3 pos=0.4484/1.2672 vel=2.3237/5.8920 fb=83.1% crash=True
+rho=10000 w_v=500000 alpha=0.6 stride=2                  p3 pos=0.0453/0.0493 vel=0.0382/0.2227 fb=4.8% crash=False settle=0.01s
+rho=30000 w_v=50000 alpha=0.1 stride=1                   p3 pos=0.5207/1.3947 vel=2.3682/7.0418 fb=40.5% crash=True
+rho=30000 w_v=50000 alpha=0.1 stride=2                   p3 pos=0.1107/0.5714 vel=0.5830/2.2533 fb=8.1% crash=False settle=0.22s
+rho=30000 w_v=50000 alpha=0.3 stride=1                   p3 pos=0.3224/1.6589 vel=1.5627/7.2500 fb=71.9% crash=True
+rho=30000 w_v=50000 alpha=0.3 stride=2                   p3 pos=0.0425/0.0674 vel=0.0604/0.3469 fb=5.0% crash=False settle=0.33s
+rho=30000 w_v=50000 alpha=0.6 stride=1                   p3 pos=0.2243/1.4738 vel=1.4843/7.8411 fb=76.5% crash=True
+rho=30000 w_v=50000 alpha=0.6 stride=2                   p3 pos=0.0436/0.0684 vel=0.0663/0.2840 fb=8.1% crash=False settle=0.91s
+rho=30000 w_v=200000 alpha=0.1 stride=1                  p3 pos=0.2319/1.2417 vel=1.4249/8.0143 fb=72.8% crash=True
+rho=30000 w_v=200000 alpha=0.1 stride=2                  p3 pos=0.1419/0.6136 vel=0.5993/2.3212 fb=7.5% crash=False settle=0.22s
+rho=30000 w_v=200000 alpha=0.3 stride=1                  p3 pos=0.3613/1.4168 vel=1.5651/5.5090 fb=68.0% crash=True
+rho=30000 w_v=200000 alpha=0.3 stride=2                  p3 pos=0.0450/0.0660 vel=0.0601/0.3309 fb=5.0% crash=False settle=0.34s
+rho=30000 w_v=200000 alpha=0.6 stride=1                  p3 pos=0.5337/1.3035 vel=1.9365/4.0084 fb=79.9% crash=True
+rho=30000 w_v=200000 alpha=0.6 stride=2                  p3 pos=0.0438/0.0660 vel=0.0631/0.2842 fb=7.1% crash=False settle=0.89s
+rho=30000 w_v=500000 alpha=0.1 stride=1                  p3 pos=0.7056/1.4204 vel=3.0822/7.0992 fb=87.6% crash=True
+rho=30000 w_v=500000 alpha=0.1 stride=2                  p3 pos=0.0375/0.0685 vel=0.0704/0.3269 fb=1.5% crash=False settle=0.18s
+rho=30000 w_v=500000 alpha=0.3 stride=1                  p3 pos=1.2368/1.2608 vel=4.9345/5.0256 fb=87.8% crash=True
+rho=30000 w_v=500000 alpha=0.3 stride=2                  p3 pos=0.0437/0.0626 vel=0.0532/0.3313 fb=4.2% crash=False settle=0.33s
+rho=30000 w_v=500000 alpha=0.6 stride=1                  p3 pos=0.5093/1.5474 vel=1.8027/4.2267 fb=88.4% crash=True
+rho=30000 w_v=500000 alpha=0.6 stride=2                  p3 pos=0.0427/0.0467 vel=0.0329/0.2082 fb=4.7% crash=False settle=0.01s
+FINAL rho=10000 w_v=50000 alpha=0.1 stride=2             p3 pos=0.0471/0.0746 vel=0.0671/0.2950 fb=0.6% crash=False settle=0.87s

@@ -52,6 +52,14 @@ def _sample_ref_horizon(env, t_now, N, dt):
     )
 
 
+def _sample_ref_vel_horizon(env, t_now, N, dt):
+    """Sample (N+1, 3) base reference velocities at t_now + j*dt."""
+    return np.array(
+        [env._eval_trajectory(t_now + j * dt)[1] for j in range(N + 1)],
+        dtype=np.float64,
+    )
+
+
 def rollout_episode(
     env,
     model,
@@ -121,11 +129,14 @@ def rollout_episode(
             # MPC sees current state (before env.step has advanced).
             t_now = env.current_step * dt
             ref_traj = _sample_ref_horizon(env, t_now, N, dt)
+            ref_vel_traj = _sample_ref_vel_horizon(env, t_now, N, dt)
             x_meas = mj_state_to_x12(env.data)
 
             do_solve = (step_idx % mpc_stride == 0) or (last_safe_action is None)
             if do_solve:
-                safe_action, mpc_info = mpc_filter.filter(x_meas, ppo_action, ref_traj)
+                safe_action, mpc_info = mpc_filter.filter(
+                    x_meas, ppo_action, ref_traj, ref_vel_traj
+                )
                 last_safe_action = safe_action.copy()
             else:
                 # Between MPC solves, pass PPO through directly. We deliberately
@@ -264,6 +275,14 @@ def main():
                              "larger rho => tighter descent but higher "
                              "infeasibility risk.")
     parser.add_argument("--smooth-penalty", type=float, default=1e-2)
+    parser.add_argument("--velocity-penalty", type=float, default=0.0,
+                        help="Stage-wise velocity penalty w_v: adds "
+                             "(w_v/N) * sum_k ||v_k||^2 to the cost. Acts "
+                             "as a derivative-style damping term.")
+    parser.add_argument("--barrier-velocity-weight", type=float, default=0.0,
+                        help="alpha for velocity-aware BLF: V uses "
+                             "z = ||e_p||^2 + alpha * ||e_v||^2 instead of "
+                             "pure position error (0 => position-only BLF).")
     parser.add_argument("--mpc-stride", type=int, default=3,
                         help="Solve MPC every Nth step; PPO passes through "
                              "directly on the intervening steps (no ZOH).")
@@ -304,6 +323,8 @@ def main():
             beta_end=args.beta_end,
             slack_penalty=args.slack_penalty,
             smooth_penalty=args.smooth_penalty,
+            velocity_penalty=args.velocity_penalty,
+            barrier_velocity_weight=args.barrier_velocity_weight,
             solver=args.mpc_solver,
             verbose=args.mpc_verbose,
         )

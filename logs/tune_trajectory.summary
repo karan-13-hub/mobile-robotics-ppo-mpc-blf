@@ -1,0 +1,25 @@
+# ppo     pos=0.1443 vel=0.1599 ee=0.2243
+# current pos=0.0796 vel=0.0895
+# fixed   rho=1000.0 w_v=50000.0 alpha=0.03
+# max fallback = 2.0%   target: min 20-ep pos_RMSE
+
+SCREEN N=7 tube=0.12 stride=1                            pos=0.0664 vel=0.0667 ee=0.1917 peak=0.0902 fb=0.0% viol=0.0% crash=0% reach=100%
+SCREEN N=7 tube=0.12 stride=2                            pos=0.0792 vel=0.0893 ee=0.1983 peak=0.1046 fb=0.0% viol=0.0% crash=0% reach=100%
+SCREEN N=7 tube=0.15 stride=1                            pos=0.0743 vel=0.0697 ee=0.1945 peak=0.1031 fb=0.0% viol=0.0% crash=0% reach=100%
+SCREEN N=7 tube=0.15 stride=2                            pos=0.0922 vel=0.0968 ee=0.2048 peak=0.1264 fb=0.0% viol=0.0% crash=0% reach=100%
+SCREEN N=7 tube=0.18 stride=1                            pos=0.0785 vel=0.0713 ee=0.1962 peak=0.1105 fb=0.0% viol=0.0% crash=0% reach=100%
+SCREEN N=7 tube=0.18 stride=2                            pos=0.1021 vel=0.1046 ee=0.2103 peak=0.1437 fb=0.0% viol=0.0% crash=0% reach=100%
+SCREEN N=10 tube=0.12 stride=1                           pos=0.0705 vel=0.0726 ee=0.1949 peak=0.0945 fb=0.0% viol=0.0% crash=0% reach=100%
+SCREEN N=10 tube=0.12 stride=2                           pos=0.0816 vel=0.0932 ee=0.2005 peak=0.1068 fb=0.0% viol=0.0% crash=0% reach=100%
+SCREEN N=10 tube=0.15 stride=1                           pos=0.0804 vel=0.0760 ee=0.1985 peak=0.1109 fb=0.0% viol=0.0% crash=0% reach=100%
+SCREEN N=10 tube=0.15 stride=2                           pos=0.0949 vel=0.0997 ee=0.2068 peak=0.1293 fb=0.0% viol=0.0% crash=0% reach=100%
+SCREEN N=10 tube=0.18 stride=1                           pos=0.0869 vel=0.0782 ee=0.2011 peak=0.1217 fb=0.0% viol=0.0% crash=0% reach=100%
+SCREEN N=10 tube=0.18 stride=2                           pos=0.1051 vel=0.1061 ee=0.2122 peak=0.1470 fb=0.0% viol=0.0% crash=0% reach=100%
+SCREEN N=14 tube=0.12 stride=1                           pos=0.0739 vel=0.0781 ee=0.1976 peak=0.0986 fb=0.0% viol=0.0% crash=0% reach=100%
+SCREEN N=14 tube=0.12 stride=2                           pos=0.0921 vel=0.1089 ee=0.2067 peak=0.1283 fb=3.2% viol=8.9% crash=0% reach=100%
+SCREEN N=14 tube=0.15 stride=1                           pos=0.0849 vel=0.0831 ee=0.2017 peak=0.1167 fb=0.0% viol=0.0% crash=0% reach=100%
+SCREEN N=14 tube=0.15 stride=2                           pos=0.0978 vel=0.1070 ee=0.2095 peak=0.1336 fb=0.0% viol=0.0% crash=0% reach=100%
+SCREEN N=14 tube=0.18 stride=1                           pos=0.0930 vel=0.0867 ee=0.2052 peak=0.1300 fb=0.0% viol=0.0% crash=0% reach=100%
+SCREEN N=14 tube=0.18 stride=2                           pos=0.1084 vel=0.1137 ee=0.2152 peak=0.1526 fb=0.0% viol=0.0% crash=0% reach=100%
+
+# 4 survivors -> 20-ep final

@@ -1,0 +1,15 @@
+rho=10000
+w_v=50000
+alpha=0.1
+stride=2
+horizon=7
+tube=0.12
+final_pos_rmse=0.0471
+final_pos_max=0.0746
+final_vel_rmse=0.0671
+final_vel_max=0.295
+final_fallback=0.6
+final_settle_s=0.87
+baseline_vel_max=0.295
+vel_max_reduction_pct=0.00
+elapsed_s=1593.4
