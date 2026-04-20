@@ -1,0 +1,13 @@
+# Core RL + simulation stack
+stable-baselines3>=2.3.0
+gymnasium>=0.29.0
+mujoco>=3.1.0
+numpy>=1.26,<2.2
+torch>=2.1.0
+
+# MPC + safety filter
+casadi>=3.6.0
+
+# Plotting and video recording (eval_ppo / eval_ppo_mpc)
+matplotlib>=3.7.0
+imageio[ffmpeg]>=2.30.0

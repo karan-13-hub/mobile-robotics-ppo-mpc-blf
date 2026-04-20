@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+venv/
+env/.venv/
+.venv/
+
+# MuJoCo
+MUJOCO_LOG.TXT
+
+# Training artefacts we do NOT want in git
+logs/ppo_aerial_manipulator_tensorboard/
+logs/**/evaluations.npz
+logs/*.log
+
+# Old / experimental checkpoints. Keep only logs/continue_7M/best_model.zip as the reference.
+logs/best_model.zip
+logs/best_model_*.zip
+logs/evaluations.npz
+logs/evaluations_*.npz
+
+# Generated media (except the canonical demo)
+videos/*.mp4
+!videos/ppo_7M_demo.mp4
+*.png
+!docs/*.png
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
