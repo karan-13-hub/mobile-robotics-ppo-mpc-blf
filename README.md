@@ -111,10 +111,11 @@ names.
 ```
 videos/
   ppo/ep00_seed{0,1,2}.mp4             # trajectory, PPO only
+  ppo_mpc_noblf/ep00_seed{0,1,2}.mp4   # trajectory, PPO + MPC (BLF off)
   ppo_mpc_blf/ep00_seed{0,1,2}.mp4     # trajectory, PPO + MPC-BLF
   disturbance/{wind_low,wind_high,arm_fold}_ppo.mp4
-  disturbance/{wind_low,wind_high,arm_fold}_mpc_blf.mp4
   disturbance/{wind_low,wind_high,arm_fold}_mpc_noblf.mp4   # BLF ablation
+  disturbance/{wind_low,wind_high,arm_fold}_mpc_blf.mp4
   METRICS.txt
 ```
 

@@ -1,0 +1,67 @@
+>>> seed=0
+/home/kmirakho/Documents/mobile-robotics/venv/lib/python3.12/site-packages/stable_baselines3/common/on_policy_algorithm.py:150: UserWarning: You are trying to run PPO on the GPU, but it is primarily intended to run on the CPU when not using a CNN policy (you are using ActorCriticPolicy which should be a MlpPolicy). See https://github.com/DLR-RM/stable-baselines3/issues/1245 for more info. You can pass `device='cpu'` or `export CUDA_VISIBLE_DEVICES=` to force using the CPU.Note: The model will train, but the GPU utilization will be poor and the training might take longer than on CPU.
+  warnings.warn(
+Evaluating: PPO + MPC (BLF disabled, tube=12.0 cm, N=7)
+Running 1 deterministic episodes...
+Saved video to videos/ppo_mpc_noblf/ep00_seed0.mp4 (251 frames at 50 fps)
+  ep 00 | T=3.00s len=5.01s | pos_RMSE=0.071 vel_RMSE=0.070 ee_RMSE=0.187 | final_d=0.092 | REACH | tube_viol=0.0% peak_e=0.103 solve=27.9/95.8ms act=100% fb=0%
+
+--- PPO + MPC (BLF disabled, tube=12.0 cm, N=7) ---
+Episodes                            : 1
+Crash rate                          : 0.00%
+Goal reach rate (tol=0.15 m)   : 100.00%
+Position tracking RMSE  [m]         : 0.0712
+Velocity tracking RMSE  [m/s]       : 0.0703
+End-effector tracking RMSE [m]      : 0.1870
+Final settling error    [m]         : 0.0924
+Tube violation rate (||e|| > 12.0 cm) : 0.00%
+Peak tracking error     [m]         : 0.1027
+MPC median solve time   [ms]        : 27.87
+MPC peak  solve time    [ms]        : 95.77
+MPC active rate (NLP actually solved): 100.00%
+MPC fallback rate                   : 0.00%
+>>> seed=1
+/home/kmirakho/Documents/mobile-robotics/venv/lib/python3.12/site-packages/stable_baselines3/common/on_policy_algorithm.py:150: UserWarning: You are trying to run PPO on the GPU, but it is primarily intended to run on the CPU when not using a CNN policy (you are using ActorCriticPolicy which should be a MlpPolicy). See https://github.com/DLR-RM/stable-baselines3/issues/1245 for more info. You can pass `device='cpu'` or `export CUDA_VISIBLE_DEVICES=` to force using the CPU.Note: The model will train, but the GPU utilization will be poor and the training might take longer than on CPU.
+  warnings.warn(
+Evaluating: PPO + MPC (BLF disabled, tube=12.0 cm, N=7)
+Running 1 deterministic episodes...
+Saved video to videos/ppo_mpc_noblf/ep00_seed1.mp4 (222 frames at 50 fps)
+  ep 00 | T=2.43s len=4.43s | pos_RMSE=0.070 vel_RMSE=0.094 ee_RMSE=0.203 | final_d=0.055 | REACH | tube_viol=0.0% peak_e=0.104 solve=30.1/95.6ms act=100% fb=0%
+
+--- PPO + MPC (BLF disabled, tube=12.0 cm, N=7) ---
+Episodes                            : 1
+Crash rate                          : 0.00%
+Goal reach rate (tol=0.15 m)   : 100.00%
+Position tracking RMSE  [m]         : 0.0699
+Velocity tracking RMSE  [m/s]       : 0.0938
+End-effector tracking RMSE [m]      : 0.2029
+Final settling error    [m]         : 0.0551
+Tube violation rate (||e|| > 12.0 cm) : 0.00%
+Peak tracking error     [m]         : 0.1035
+MPC median solve time   [ms]        : 30.11
+MPC peak  solve time    [ms]        : 95.64
+MPC active rate (NLP actually solved): 100.00%
+MPC fallback rate                   : 0.00%
+>>> seed=2
+/home/kmirakho/Documents/mobile-robotics/venv/lib/python3.12/site-packages/stable_baselines3/common/on_policy_algorithm.py:150: UserWarning: You are trying to run PPO on the GPU, but it is primarily intended to run on the CPU when not using a CNN policy (you are using ActorCriticPolicy which should be a MlpPolicy). See https://github.com/DLR-RM/stable-baselines3/issues/1245 for more info. You can pass `device='cpu'` or `export CUDA_VISIBLE_DEVICES=` to force using the CPU.Note: The model will train, but the GPU utilization will be poor and the training might take longer than on CPU.
+  warnings.warn(
+Evaluating: PPO + MPC (BLF disabled, tube=12.0 cm, N=7)
+Running 1 deterministic episodes...
+Saved video to videos/ppo_mpc_noblf/ep00_seed2.mp4 (239 frames at 50 fps)
+  ep 00 | T=2.76s len=4.76s | pos_RMSE=0.071 vel_RMSE=0.072 ee_RMSE=0.207 | final_d=0.074 | REACH | tube_viol=0.0% peak_e=0.093 solve=27.5/95.1ms act=100% fb=0%
+
+--- PPO + MPC (BLF disabled, tube=12.0 cm, N=7) ---
+Episodes                            : 1
+Crash rate                          : 0.00%
+Goal reach rate (tol=0.15 m)   : 100.00%
+Position tracking RMSE  [m]         : 0.0712
+Velocity tracking RMSE  [m/s]       : 0.0716
+End-effector tracking RMSE [m]      : 0.2069
+Final settling error    [m]         : 0.0740
+Tube violation rate (||e|| > 12.0 cm) : 0.00%
+Peak tracking error     [m]         : 0.0926
+MPC median solve time   [ms]        : 27.54
+MPC peak  solve time    [ms]        : 95.06
+MPC active rate (NLP actually solved): 100.00%
+MPC fallback rate                   : 0.00%
+=== DONE ===

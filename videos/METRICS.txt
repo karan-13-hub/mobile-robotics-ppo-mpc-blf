@@ -31,6 +31,13 @@ random start (env seed). Reach tol = 15 cm. Units: metres / metres/second.
   final d   = 0.086      peak err   = 0.177      tube viol (>12 cm) = 29.7 %
   crashed   = no         reached    = yes
 
+----- videos/ppo_mpc_noblf/ep00_seed0.mp4    PPO + MPC (BLF off, ablation) -----
+  T_traj=3.00 s,  episode length=5.01 s
+  pos RMSE  = 0.071      vel RMSE   = 0.070      ee RMSE  = 0.187
+  final d   = 0.092      peak err   = 0.103      tube viol (>12 cm) = 0.0 %
+  MPC active= 100 %      fallback   = 0 %        median/peak solve = 27.9 /  95.8 ms
+  crashed   = no         reached    = yes
+
 ----- videos/ppo_mpc_blf/ep00_seed0.mp4                PPO + MPC-BLF (winner) -----
   T_traj=3.00 s,  episode length=5.01 s
   pos RMSE  = 0.062      vel RMSE   = 0.065      ee RMSE  = 0.183
@@ -42,6 +49,13 @@ random start (env seed). Reach tol = 15 cm. Units: metres / metres/second.
   T_traj=2.43 s,  episode length=4.43 s
   pos RMSE  = 0.137      vel RMSE   = 0.237      ee RMSE  = 0.253
   final d   = 0.037      peak err   = 0.214      tube viol (>12 cm) = 36.8 %
+  crashed   = no         reached    = yes
+
+----- videos/ppo_mpc_noblf/ep00_seed1.mp4    PPO + MPC (BLF off, ablation) -----
+  T_traj=2.43 s,  episode length=4.43 s
+  pos RMSE  = 0.070      vel RMSE   = 0.094      ee RMSE  = 0.203
+  final d   = 0.055      peak err   = 0.104      tube viol (>12 cm) = 0.0 %
+  MPC active= 100 %      fallback   = 0 %        median/peak solve = 30.1 /  95.6 ms
   crashed   = no         reached    = yes
 
 ----- videos/ppo_mpc_blf/ep00_seed1.mp4                PPO + MPC-BLF (winner) -----
@@ -57,12 +71,28 @@ random start (env seed). Reach tol = 15 cm. Units: metres / metres/second.
   final d   = 0.045      peak err   = 0.202      tube viol (>12 cm) = 42.5 %
   crashed   = no         reached    = yes
 
+----- videos/ppo_mpc_noblf/ep00_seed2.mp4    PPO + MPC (BLF off, ablation) -----
+  T_traj=2.76 s,  episode length=4.76 s
+  pos RMSE  = 0.071      vel RMSE   = 0.072      ee RMSE  = 0.207
+  final d   = 0.074      peak err   = 0.093      tube viol (>12 cm) = 0.0 %
+  MPC active= 100 %      fallback   = 0 %        median/peak solve = 27.5 /  95.1 ms
+  crashed   = no         reached    = yes
+
 ----- videos/ppo_mpc_blf/ep00_seed2.mp4                PPO + MPC-BLF (winner) -----
   T_traj=2.76 s,  episode length=4.76 s
   pos RMSE  = 0.065      vel RMSE   = 0.069      ee RMSE  = 0.204
   final d   = 0.062      peak err   = 0.085      tube viol (>12 cm) = 0.0 %
   MPC active= 100 %      fallback   = 0 %        median/peak solve = 33.0 / 65.3 ms
   crashed   = no         reached    = yes
+
+NOTE on the 3 no-BLF sample videos above:
+  Seeds 0/1/2 all happen to track inside the 12 cm tube even without the
+  BLF constraint, so the per-episode tube_viol reads 0 % in each clip.
+  That is _not_ representative of the config as a whole -- the 5-seed x
+  20-episode aggregate below shows MPC-no-BLF still crosses the tube
+  14.45 % of the time on average (vs 0 % for MPC+BLF), with individual
+  episodes up to 49 % violation.  The 3 video seeds are chosen to match
+  the PPO baseline set for visual comparison, not as a safety benchmark.
 
 --- Trajectory-tracking aggregate (5 seeds x 20 deterministic episodes = 100 eps) ---
 Seeds = [0, 20, 40, 60, 80].  Reported as  mean +/- std_seed [+/- std_ep],
@@ -262,6 +292,11 @@ the settled<10 s column flipping from "no" to "yes" only for MPC+BLF.
        --mpc-horizon 7 --tube 0.12 --mpc-stride 1 \
        --slack-penalty 1e3 --velocity-penalty 5e4 --barrier-velocity-weight 0.03 \
        --save-video videos/ppo_mpc_blf/ep00_seed${s}.mp4 --video-episode 0
+   # BLF ablation (same MPC NLP, outer fence + descent constraint disabled)
+   python eval_ppo_mpc.py --episodes 1 --seed $s --no-blf \
+       --mpc-horizon 7 --tube 0.12 --mpc-stride 1 \
+       --slack-penalty 1e3 --velocity-penalty 5e4 --barrier-velocity-weight 0.03 \
+       --save-video videos/ppo_mpc_noblf/ep00_seed${s}.mp4 --video-episode 0
  done
 
  # 5-seed x 20-episode aggregate trajectory-tracking metrics
