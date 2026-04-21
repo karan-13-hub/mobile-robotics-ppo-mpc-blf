@@ -19,6 +19,8 @@ MUJOCO_LOG.TXT
 logs/ppo_aerial_manipulator_tensorboard/
 logs/**/evaluations.npz
 logs/*.log
+logs/retrain_7M/
+*.bak
 
 # Old / experimental checkpoints. Keep only logs/continue_7M/best_model.zip as the reference.
 logs/best_model.zip
