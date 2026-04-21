@@ -50,99 +50,141 @@ plt.rcParams.update({
 })
 
 PPO_COLOR = "#8a8a8a"
-MPC_COLOR = "#2c6df5"
+NOBLF_COLOR = "#f2a93b"      # MPC, BLF disabled
+MPC_COLOR = "#2c6df5"        # full MPC + BLF (winner)
+_ECOLOR = {PPO_COLOR: "#444444", NOBLF_COLOR: "#8a5a00", MPC_COLOR: "#0b3a99"}
 
 
-def bar_compare(ax, labels, ppo_vals, mpc_vals, ylabel, title,
-                pct_drop=True, ppo_err=None, mpc_err=None):
+def bar_groups(ax, labels, series, ylabel, title, annotate_pct_ref_idx=None):
+    """Draw N groups of bars.
+
+    series is a list of dicts: {"label","color","vals","errs"}.
+    If annotate_pct_ref_idx is not None, each non-reference series is
+    annotated with its percentage change vs the reference series above
+    each bar.
+    """
+    n_ser = len(series)
     x = np.arange(len(labels))
-    w = 0.38
-    ppo_err = ppo_err if ppo_err is not None else [0.0] * len(ppo_vals)
-    mpc_err = mpc_err if mpc_err is not None else [0.0] * len(mpc_vals)
-    ax.bar(x - w / 2, ppo_vals, w, label="PPO", color=PPO_COLOR,
-           yerr=ppo_err, capsize=4, ecolor="#444444",
-           error_kw={"elinewidth": 1.2})
-    ax.bar(x + w / 2, mpc_vals, w, label="PPO + MPC-BLF", color=MPC_COLOR,
-           yerr=mpc_err, capsize=4, ecolor="#0b3a99",
-           error_kw={"elinewidth": 1.2})
-    for i, (p, m, pe, me) in enumerate(zip(ppo_vals, mpc_vals, ppo_err, mpc_err)):
-        if pct_drop and p > 0:
-            delta = 100.0 * (m - p) / p
-            ax.annotate(f"{delta:+.0f}%",
-                        xy=(i + w / 2, m + me), xytext=(0, 6),
-                        textcoords="offset points",
-                        ha="center", fontsize=10, color=MPC_COLOR)
+    total_w = 0.78
+    w = total_w / n_ser
+    offsets = (np.arange(n_ser) - (n_ser - 1) / 2.0) * w
+    for s, off in zip(series, offsets):
+        vals = np.asarray(s["vals"], dtype=float)
+        errs = np.asarray(s.get("errs") or [0.0] * len(vals), dtype=float)
+        ax.bar(x + off, vals, w, label=s["label"], color=s["color"],
+               yerr=errs, capsize=3, ecolor=_ECOLOR.get(s["color"], "#444"),
+               error_kw={"elinewidth": 1.0})
+    if annotate_pct_ref_idx is not None:
+        ref = series[annotate_pct_ref_idx]
+        ref_vals = np.asarray(ref["vals"], dtype=float)
+        for si, s in enumerate(series):
+            if si == annotate_pct_ref_idx:
+                continue
+            vals = np.asarray(s["vals"], dtype=float)
+            errs = np.asarray(s.get("errs") or [0.0] * len(vals), dtype=float)
+            off = offsets[si]
+            for i, (v, e, r) in enumerate(zip(vals, errs, ref_vals)):
+                if r > 0:
+                    delta = 100.0 * (v - r) / r
+                    ax.annotate(f"{delta:+.0f}%",
+                                xy=(i + off, v + e), xytext=(0, 4),
+                                textcoords="offset points",
+                                ha="center", fontsize=9, color=s["color"])
     ax.set_xticks(x, labels)
     ax.set_ylabel(ylabel)
     ax.set_title(title, loc="left", pad=12)
     ax.legend(frameon=False, loc="upper right")
 
 
+def _series_from_summary(run_key, label, color, keys):
+    vals = [_mean_std(_SUMMARY, run_key, k)[0] for k in keys]
+    errs = [_mean_std(_SUMMARY, run_key, k)[1] for k in keys]
+    return {"label": label, "color": color, "vals": vals, "errs": errs}
+
+
 def plot_trajectory_tracking():
     labels = ["pos RMSE [m]", "vel RMSE [m/s]", "peak err [m]"]
     keys = ["pos_rmse", "vel_rmse", "peak_err"]
     if _SUMMARY is not None:
-        ppo = [_mean_std(_SUMMARY, "ppo", k)[0] for k in keys]
-        mpc = [_mean_std(_SUMMARY, "mpc", k)[0] for k in keys]
-        ppo_err = [_mean_std(_SUMMARY, "ppo", k)[1] for k in keys]
-        mpc_err = [_mean_std(_SUMMARY, "mpc", k)[1] for k in keys]
-        title = ("Trajectory tracking  —  5 seeds × 20 episodes "
-                 "(mean, error bars = std across seeds)")
+        series = [
+            _series_from_summary("ppo", "PPO", PPO_COLOR, keys),
+        ]
+        if "mpc_no_blf" in _SUMMARY["runs"]:
+            series.append(_series_from_summary(
+                "mpc_no_blf", "PPO + MPC (BLF off)", NOBLF_COLOR, keys))
+        series.append(_series_from_summary(
+            "mpc", "PPO + MPC + BLF", MPC_COLOR, keys))
+        n_seeds = _SUMMARY["runs"]["ppo"]["n_seeds"]
+        n_eps = _SUMMARY.get("episodes_per_seed",
+                             _SUMMARY["runs"]["ppo"].get("n_episodes_total", 100) // max(n_seeds, 1))
+        title = (f"Trajectory tracking  —  {n_seeds} seeds × {n_eps} episodes "
+                 "(mean, error bars = std across seed means)")
     else:
-        ppo = [0.1443, 0.1599, 0.2192]
-        mpc = [0.0658, 0.0646, 0.0910]
-        ppo_err = mpc_err = [0.0, 0.0, 0.0]
+        series = [
+            {"label": "PPO", "color": PPO_COLOR,
+             "vals": [0.1443, 0.1599, 0.2192], "errs": [0.0, 0.0, 0.0]},
+            {"label": "PPO + MPC + BLF", "color": MPC_COLOR,
+             "vals": [0.0658, 0.0646, 0.0910], "errs": [0.0, 0.0, 0.0]},
+        ]
         title = "Trajectory tracking  —  20 deterministic episodes, seed 0"
-    fig, ax = plt.subplots(figsize=(9, 4.5))
-    bar_compare(ax, labels, ppo, mpc,
-                ylabel="metric value",
-                title=title,
-                ppo_err=ppo_err, mpc_err=mpc_err)
-    top = max(p + e for p, e in zip(ppo, ppo_err))
-    top = max(top, max(m + e for m, e in zip(mpc, mpc_err)))
-    ax.set_ylim(0, top * 1.30)
+    fig, ax = plt.subplots(figsize=(10, 4.7))
+    bar_groups(ax, labels, series,
+               ylabel="metric value", title=title,
+               annotate_pct_ref_idx=0)
+    top = 0.0
+    for s in series:
+        top = max(top, max(v + e for v, e in zip(s["vals"], s["errs"])))
+    ax.set_ylim(0, top * 1.35)
     fig.tight_layout()
     fig.savefig(os.path.join(HERE, "trajectory_tracking.png"), bbox_inches="tight")
     plt.close(fig)
 
 
 def plot_tube_violation():
-    labels = ["tube violation rate\n(>12 cm)"]
+    labels = ["tube violation rate\n(‖e‖ > 12 cm)"]
     if _SUMMARY is not None:
+        series = []
         ppo_m, ppo_s = _mean_std(_SUMMARY, "ppo", "tube_viol_pct")
+        series.append({"label": "PPO", "color": PPO_COLOR,
+                       "vals": [ppo_m], "errs": [ppo_s]})
+        if "mpc_no_blf" in _SUMMARY["runs"]:
+            nb_m, nb_s = _mean_std(_SUMMARY, "mpc_no_blf", "tube_viol_pct")
+            series.append({"label": "PPO + MPC (BLF off)", "color": NOBLF_COLOR,
+                           "vals": [nb_m], "errs": [nb_s]})
         mpc_m, mpc_s = _mean_std(_SUMMARY, "mpc", "tube_viol_pct")
-        ppo, mpc = [ppo_m], [mpc_m]
-        ppo_err, mpc_err = [ppo_s], [mpc_s]
-        subtitle = (f"5 seeds × 20 episodes — PPO crosses the 12 cm tube "
-                    f"{ppo_m:.1f} % of the time; MPC-BLF holds it at "
-                    f"{mpc_m:.2f} %")
+        series.append({"label": "PPO + MPC + BLF", "color": MPC_COLOR,
+                       "vals": [mpc_m], "errs": [mpc_s]})
+        if len(series) == 3:
+            subtitle = (f"5 seeds × 20 eps — PPO {ppo_m:.1f} %   →   "
+                        f"MPC alone {series[1]['vals'][0]:.1f} %   →   "
+                        f"MPC + BLF {mpc_m:.2f} %")
+        else:
+            subtitle = (f"5 seeds × 20 episodes — PPO crosses the 12 cm tube "
+                        f"{ppo_m:.1f} % of the time; MPC-BLF holds it at "
+                        f"{mpc_m:.2f} %")
     else:
-        ppo, mpc = [40.72], [0.00]
-        ppo_err = mpc_err = [0.0]
+        series = [
+            {"label": "PPO", "color": PPO_COLOR, "vals": [40.72], "errs": [0.0]},
+            {"label": "PPO + MPC + BLF", "color": MPC_COLOR, "vals": [0.0], "errs": [0.0]},
+        ]
         subtitle = ("PPO alone crosses the 12 cm tube 40 % of the time; "
                     "MPC-BLF holds it at 0 %")
 
-    fig, ax = plt.subplots(figsize=(6, 4.5))
-    x = np.arange(len(labels))
-    w = 0.5
-    ax.bar(x - w / 2, ppo, w, label="PPO", color=PPO_COLOR,
-           yerr=ppo_err, capsize=4, ecolor="#444444",
-           error_kw={"elinewidth": 1.2})
-    ax.bar(x + w / 2, mpc, w, label="PPO + MPC-BLF", color=MPC_COLOR,
-           yerr=mpc_err, capsize=4, ecolor="#0b3a99",
-           error_kw={"elinewidth": 1.2})
-    ax.text(0 - w / 2, ppo[0] + ppo_err[0] + 1.5,
-            f"{ppo[0]:.2f}% ± {ppo_err[0]:.2f}",
-            ha="center", fontsize=11, color=PPO_COLOR)
-    ax.text(0 + w / 2, max(2.0, mpc[0] + mpc_err[0] + 1.5),
-            f"{mpc[0]:.2f}%",
-            ha="center", fontsize=11, color=MPC_COLOR)
-    ax.set_xticks(x, labels)
-    ax.set_ylabel("violation rate [%]")
-    ax.set_ylim(0, max(60.0, ppo[0] + ppo_err[0] + 8))
-    ax.set_title("Safety tube violations\n" + subtitle,
-                 loc="left", pad=12)
-    ax.legend(frameon=False, loc="upper right")
+    fig, ax = plt.subplots(figsize=(7.5, 4.8))
+    bar_groups(ax, labels, series,
+               ylabel="violation rate [%]",
+               title="Safety tube violations\n" + subtitle)
+    top = 0.0
+    for s in series:
+        top = max(top, s["vals"][0] + s["errs"][0])
+    ax.set_ylim(0, max(60.0, top + 8))
+    for s, off in zip(series,
+                      (np.arange(len(series)) - (len(series) - 1) / 2.0)
+                      * (0.78 / len(series))):
+        v, e = s["vals"][0], s["errs"][0]
+        ax.text(0 + off, max(v + e + 1.5, 2.0),
+                f"{v:.2f}%" if v >= 1 else f"{v:.2f}%",
+                ha="center", fontsize=10, color=s["color"])
     fig.tight_layout()
     fig.savefig(os.path.join(HERE, "tube_violation.png"), bbox_inches="tight")
     plt.close(fig)
@@ -200,41 +242,45 @@ def plot_solve_cost():
         ppo_peak, ppo_peak_s = _mean_std(_SUMMARY, "ppo", "solve_max_ms")
         mpc_med, mpc_med_s = _mean_std(_SUMMARY, "mpc", "solve_median_ms")
         mpc_peak, mpc_peak_s = _mean_std(_SUMMARY, "mpc", "solve_max_ms")
-        ppo = [ppo_med, ppo_peak, 0.0, 0.0]
-        mpc = [mpc_med, mpc_peak, 100.0, 0.0]
-        ppo_err = [ppo_med_s, ppo_peak_s, 0.0, 0.0]
-        mpc_err = [mpc_med_s, mpc_peak_s, 0.0, 0.0]
-        title = (f"Compute cost of the filter  —  ~{mpc_med:.0f} ms median, "
+        series = [
+            {"label": "PPO", "color": PPO_COLOR,
+             "vals": [ppo_med, ppo_peak, 0.0, 0.0],
+             "errs": [ppo_med_s, ppo_peak_s, 0.0, 0.0]},
+        ]
+        if "mpc_no_blf" in _SUMMARY["runs"]:
+            nb_med, nb_med_s = _mean_std(_SUMMARY, "mpc_no_blf", "solve_median_ms")
+            nb_peak, nb_peak_s = _mean_std(_SUMMARY, "mpc_no_blf", "solve_max_ms")
+            series.append({"label": "PPO + MPC (BLF off)", "color": NOBLF_COLOR,
+                           "vals": [nb_med, nb_peak, 100.0, 0.0],
+                           "errs": [nb_med_s, nb_peak_s, 0.0, 0.0]})
+        series.append({"label": "PPO + MPC + BLF", "color": MPC_COLOR,
+                       "vals": [mpc_med, mpc_peak, 100.0, 0.0],
+                       "errs": [mpc_med_s, mpc_peak_s, 0.0, 0.0]})
+        title = (f"Compute cost of the filter  —  MPC+BLF ~{mpc_med:.0f} ms median, "
                  f"per-ep peak ~{mpc_peak:.0f} ms, 0 % fallback "
                  f"(5 seeds × 20 episodes)")
     else:
-        ppo = [0.91, 6.86, 0.0, 0.0]
-        mpc = [33.2, 117.3, 100.0, 0.0]
-        ppo_err = mpc_err = [0.0, 0.0, 0.0, 0.0]
+        series = [
+            {"label": "PPO", "color": PPO_COLOR,
+             "vals": [0.91, 6.86, 0.0, 0.0], "errs": [0.0] * 4},
+            {"label": "PPO + MPC + BLF", "color": MPC_COLOR,
+             "vals": [33.2, 117.3, 100.0, 0.0], "errs": [0.0] * 4},
+        ]
         title = ("Compute cost of the filter  —  ~33 ms median, "
                  "solved every env step, 0% fallback")
 
-    fig, ax = plt.subplots(figsize=(9, 4.5))
-    x = np.arange(len(labels))
-    w = 0.38
-    ax.bar(x - w / 2, ppo, w, label="PPO", color=PPO_COLOR,
-           yerr=ppo_err, capsize=4, ecolor="#444444",
-           error_kw={"elinewidth": 1.2})
-    ax.bar(x + w / 2, mpc, w, label="PPO + MPC-BLF", color=MPC_COLOR,
-           yerr=mpc_err, capsize=4, ecolor="#0b3a99",
-           error_kw={"elinewidth": 1.2})
-    for i, (p, m) in enumerate(zip(ppo, mpc)):
-        ax.annotate(f"{p:g}", xy=(i - w / 2, p),
-                    xytext=(0, 3), textcoords="offset points",
-                    ha="center", fontsize=10, color=PPO_COLOR)
-        ax.annotate(f"{m:g}", xy=(i + w / 2, m),
-                    xytext=(0, 3), textcoords="offset points",
-                    ha="center", fontsize=10, color=MPC_COLOR)
-    ax.set_xticks(x, labels)
+    fig, ax = plt.subplots(figsize=(10, 4.7))
+    bar_groups(ax, labels, series,
+               ylabel="value (symlog scale)", title=title)
+    n_ser = len(series)
+    w = 0.78 / n_ser
+    offsets = (np.arange(n_ser) - (n_ser - 1) / 2.0) * w
+    for s, off in zip(series, offsets):
+        for i, v in enumerate(s["vals"]):
+            ax.annotate(f"{v:g}", xy=(i + off, v),
+                        xytext=(0, 3), textcoords="offset points",
+                        ha="center", fontsize=9, color=s["color"])
     ax.set_yscale("symlog", linthresh=1.0)
-    ax.set_ylabel("value (symlog scale)")
-    ax.set_title(title, loc="left", pad=12)
-    ax.legend(frameon=False, loc="upper right")
     fig.tight_layout()
     fig.savefig(os.path.join(HERE, "solve_cost.png"), bbox_inches="tight")
     plt.close(fig)

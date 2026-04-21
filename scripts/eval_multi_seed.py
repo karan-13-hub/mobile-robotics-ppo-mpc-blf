@@ -2,20 +2,22 @@
 per-episode metrics so we can report mean +/- std.
 
 For each seed in --seeds (default 0 20 40 60 80) we launch 20 deterministic
-episodes, parse the `  ep NN | ... | pos_RMSE=... vel_RMSE=... ... tube_viol=...
-peak_e=... solve=a/b ms[ fb=c%]` lines from stdout, and dump them to JSON.
+episodes for three configurations:
+  - PPO alone                                        (key "ppo")
+  - PPO + MPC tracking, BLF safety constraint OFF    (key "mpc_no_blf")
+  - PPO + MPC-BLF                                    (key "mpc")
+
+Per-episode lines `  ep NN | ... | pos_RMSE=... vel_RMSE=... ... tube_viol=...
+peak_e=... solve=a/b ms[ fb=c%]` are parsed from stdout and dumped to JSON.
 
 Output: logs/multi_seed/summary.json  with structure
   {
     "mpc_config": {...},
     "runs": {
-        "ppo": {
-            "per_seed": [{"seed": 0, "episodes": [...], "mean": {...}}, ...],
-            "overall_mean":     {"pos_rmse": .., ...},   # mean over 5 seed means
-            "overall_std_seeds": {"pos_rmse": .., ...},  # std over 5 seed means
-            "overall_std_eps":   {"pos_rmse": .., ...}   # std over 100 episodes
-        },
-        "mpc": {...}
+        "ppo":         {"per_seed": [...], "overall_mean": {...},
+                        "overall_std_seeds": {...}, "overall_std_eps": {...}},
+        "mpc_no_blf":  {...},
+        "mpc":         {...}
     }
   }
 
@@ -143,21 +145,38 @@ def main():
     parser.add_argument("--velocity-penalty", type=float, default=5e4)
     parser.add_argument("--barrier-velocity-weight", type=float, default=0.03)
     parser.add_argument("--python", default=sys.executable)
+    parser.add_argument("--skip-ppo", action="store_true",
+                        help="Skip the PPO-only block (useful when you "
+                             "only need the MPC ablations).")
+    parser.add_argument("--skip-mpc", action="store_true",
+                        help="Skip the PPO + MPC-BLF block.")
+    parser.add_argument("--skip-mpc-no-blf", action="store_true",
+                        help="Skip the PPO + MPC (BLF off) ablation block.")
+    parser.add_argument("--out-suffix", default="",
+                        help="Filename suffix for *_seed*.txt logs and "
+                             "summary.json. Empty (default) overwrites the "
+                             "canonical files.")
     args = parser.parse_args()
 
     os.makedirs(OUT_DIR, exist_ok=True)
+    sfx = args.out_suffix
 
     ppo_runs = []
     mpc_runs = []
+    mpc_no_blf_runs = []
     for s in args.seeds:
-        ppo_cmd = [
-            args.python, "eval_ppo.py",
-            "--model", args.model,
-            "--episodes", str(args.episodes),
-            "--seed", str(s),
-            "--tube", str(args.tube),
-        ]
-        mpc_cmd = [
+        if not args.skip_ppo:
+            ppo_cmd = [
+                args.python, "eval_ppo.py",
+                "--model", args.model,
+                "--episodes", str(args.episodes),
+                "--seed", str(s),
+                "--tube", str(args.tube),
+            ]
+            ppo_runs.append((s, run_one(ppo_cmd, os.path.join(
+                OUT_DIR, f"ppo_seed{s}{sfx}.txt"))))
+
+        common_mpc = [
             args.python, "eval_ppo_mpc.py",
             "--model", args.model,
             "--episodes", str(args.episodes),
@@ -169,10 +188,24 @@ def main():
             "--velocity-penalty", str(args.velocity_penalty),
             "--barrier-velocity-weight", str(args.barrier_velocity_weight),
         ]
-        ppo_runs.append((s, run_one(ppo_cmd,
-                                    os.path.join(OUT_DIR, f"ppo_seed{s}.txt"))))
-        mpc_runs.append((s, run_one(mpc_cmd,
-                                    os.path.join(OUT_DIR, f"mpc_seed{s}.txt"))))
+
+        if not args.skip_mpc_no_blf:
+            mpc_no_blf_runs.append((s, run_one(
+                common_mpc + ["--no-blf"],
+                os.path.join(OUT_DIR, f"mpc_no_blf_seed{s}{sfx}.txt"))))
+
+        if not args.skip_mpc:
+            mpc_runs.append((s, run_one(
+                common_mpc,
+                os.path.join(OUT_DIR, f"mpc_seed{s}{sfx}.txt"))))
+
+    runs_block = {}
+    if ppo_runs:
+        runs_block["ppo"] = build_run_block(ppo_runs)
+    if mpc_no_blf_runs:
+        runs_block["mpc_no_blf"] = build_run_block(mpc_no_blf_runs)
+    if mpc_runs:
+        runs_block["mpc"] = build_run_block(mpc_runs)
 
     summary = {
         "model": args.model,
@@ -186,18 +219,17 @@ def main():
             "velocity_penalty": args.velocity_penalty,
             "barrier_velocity_weight": args.barrier_velocity_weight,
         },
-        "runs": {
-            "ppo": build_run_block(ppo_runs),
-            "mpc": build_run_block(mpc_runs),
-        },
+        "runs": runs_block,
     }
 
-    out_path = os.path.join(OUT_DIR, "summary.json")
+    out_path = os.path.join(OUT_DIR, f"summary{sfx}.json")
     with open(out_path, "w") as f:
         json.dump(summary, f, indent=2)
 
     print("\n=== summary ===")
-    for label in ("ppo", "mpc"):
+    for label in ("ppo", "mpc_no_blf", "mpc"):
+        if label not in summary["runs"]:
+            continue
         m = summary["runs"][label]["overall_mean"]
         sS = summary["runs"][label]["overall_std_seeds"]
         sE = summary["runs"][label]["overall_std_eps"]

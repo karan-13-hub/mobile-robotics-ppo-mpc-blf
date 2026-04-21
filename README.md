@@ -40,25 +40,31 @@ across the five seed-level means (n=5).  Per-episode pooled stds (n=100) are
 larger but qualitatively unchanged; full breakdown is in
 `logs/multi_seed/summary.json`.
 
-| metric                                | PPO only            | PPO + MPC-BLF           | delta        |
-| :------------------------------------ | ------------------: | ----------------------: | :----------- |
-| Crash rate                            |       0.00 %        |        0.00 %           |              |
-| Goal reach rate (15 cm tol.)          |     100.00 %        |      100.00 %           |              |
-| Position tracking RMSE  [m]           | 0.1413  ± 0.0038    | **0.0643  ± 0.0008**    | **−54.5 %**  |
-| Velocity tracking RMSE  [m/s]         | 0.1719  ± 0.0157    | **0.0665  ± 0.0032**    | **−61.3 %**  |
-| Peak tracking error [m]               | 0.2146  ± 0.0057    | **0.0884  ± 0.0013**    | **−58.8 %**  |
-| Tube violation rate (‖e‖ > 12 cm)     |  53.53 % ± 1.45 %   |   **0.00 % ± 0.00 %**   | **−100 %**   |
-| Median solve time [ms]                |  1.22   ± 0.07      |   33.39  ± 0.28         |              |
-| Peak  solve time [ms] (per-ep mean)   |  2.58   ± 0.35      |   58.22  ± 1.87         |              |
-| Peak  solve time [ms] (abs. across 100 eps) | 10.44         |  109.90                 |              |
-| MPC active rate (NLP actually solved) |      –              |      100.00 %           |              |
-| MPC fallback rate                     |      –              |        0.00 %           |              |
+| metric                                | PPO only            | PPO + MPC (BLF **off**) | PPO + MPC + BLF         | Δ (PPO → BLF) |
+| :------------------------------------ | ------------------: | ----------------------: | ----------------------: | :------------ |
+| Crash rate                            |       0.00 %        |        0.00 %           |        0.00 %           |               |
+| Goal reach rate (15 cm tol.)          |     100.00 %        |      100.00 %           |      100.00 %           |               |
+| Position tracking RMSE  [m]           | 0.1413  ± 0.0038    |   0.0808  ± 0.0041      | **0.0643  ± 0.0008**    | **−54.5 %**   |
+| Velocity tracking RMSE  [m/s]         | 0.1719  ± 0.0157    |   0.0744  ± 0.0026      | **0.0665  ± 0.0032**    | **−61.3 %**   |
+| Peak tracking error [m]               | 0.2146  ± 0.0057    |   0.1182  ± 0.0069      | **0.0884  ± 0.0013**    | **−58.8 %**   |
+| Tube violation rate (‖e‖ > 12 cm)     |  53.53 % ± 1.45 %   |  14.45 % ± 5.21 %       |   **0.00 % ± 0.00 %**   | **−100 %**    |
+| Median solve time [ms]                |  1.22   ± 0.07      |  28.16   ± 0.34         |  33.39    ± 0.28        |               |
+| Peak  solve time [ms] (per-ep mean)   |  2.58   ± 0.35      |  40.75   ± 0.52         |  58.22    ± 1.87        |               |
+| Peak  solve time [ms] (abs. across 100 eps) | 10.44         | 111.70                  | 109.90                  |               |
+| MPC active rate (NLP actually solved) |      –              |     100.00 %            |     100.00 %            |               |
+| MPC fallback rate                     |      –              |       0.00 %            |       0.00 %            |               |
 
-The filter cuts every tracking-error metric by ≥ 55 % and eliminates tube
-violations entirely.  Run-to-run variance (across seeds) is also an
-order of magnitude smaller for the filtered policy: e.g. position RMSE has
-seed-std ≈ 1 mm under the filter vs ≈ 4 mm without.  The cost is an extra
-~33 ms median NLP solve every control step (stride=1).
+**BLF ablation.** The middle column runs the same MPC NLP every control
+step but with the barrier-Lyapunov safety constraint disabled
+(`eval_ppo_mpc.py --no-blf`), so MPC acts as a pure tracking
+optimiser. That alone already cuts position RMSE 0.1413 → 0.0808 (−43 %)
+and tube violations 53.5 % → 14.5 %. Re-enabling the BLF descent
+constraint drops tracking by another 20 % **and** drives tube violations
+all the way to 0 % across all 100 episodes — the filter does useful work
+beyond just "MPC is a better controller than PPO". Run-to-run variance
+(across seeds) is also an order of magnitude smaller for the full filter:
+position RMSE seed-std ≈ 0.8 mm with BLF vs 4 mm without. The cost is an
+extra ~5 ms median NLP (33 ms vs 28 ms) per control step at stride = 1.
 
 ### Disturbance rejection (2 s hover + 2 s disturb + 10 s stabilize, seed 0)
 
@@ -99,6 +105,36 @@ videos/
   disturbance/{wind_low,wind_high,arm_fold}_ppo.mp4
   disturbance/{wind_low,wind_high,arm_fold}_mpc_blf.mp4
   METRICS.txt
+```
+
+### PPO training curves (≈ 6.74 M env steps)
+
+Fully-from-scratch training run under the same protocol as the baseline
+checkpoint (`logs/retrain_7M/`): 5 M env-step phase 1 at lr 3e-4, then a
+2 M env-step phase 2 fine-tune at lr 1e-4 that warm-starts from phase 1's
+`best_model.zip` (saved by `EvalCallback` at step 4.74 M, not the final
+5 M checkpoint).  Cumulative env steps therefore top out at ≈ 6.74 M, not
+a clean 7 M.  The dashed vertical line in every plot marks the true
+phase-2 warm-start at 4.74 M.
+
+The curves below come from `scripts/retrain_from_scratch.py --plots-only`,
+which parses the tensorboard event files under `logs/retrain_7M/tb/`.
+
+| metric                         | plot                                                    |
+| :----------------------------- | :------------------------------------------------------ |
+| Mean episode reward            | `presentation/plots/training_reward.png`                |
+| Mean episode length            | `presentation/plots/training_ep_len.png`                |
+| Value-function loss            | `presentation/plots/training_value_loss.png`            |
+| Policy gradient loss           | `presentation/plots/training_policy_loss.png`           |
+| Explained variance of value fn | `presentation/plots/training_explained_variance.png`    |
+
+```bash
+# Reproduce the training run end-to-end (~1 hour on RTX 6000 Ada)
+nohup python scripts/retrain_from_scratch.py \
+    > logs/retrain_7M/pipeline.log 2>&1 &
+
+# Or just (re)render the plots from existing tensorboard events
+python scripts/retrain_from_scratch.py --plots-only
 ```
 
 ## Best-found MPC-BLF parameters
@@ -182,7 +218,11 @@ Reproduce the trajectory-tracking numbers in the table above (5 seeds × 20
 episodes, writes `logs/multi_seed/summary.json`):
 
 ```bash
+# PPO vs PPO + MPC-BLF (both configurations, 5 seeds x 20 episodes each)
 python scripts/eval_multi_seed.py   # seeds [0, 20, 40, 60, 80] by default
+
+# BLF ablation: same MPC, safety constraint disabled
+python scripts/eval_multi_seed.py --skip-ppo --skip-mpc --out-suffix _only_no_blf
 ```
 
 A single-seed run (matches one column of the multi-seed protocol):
@@ -190,6 +230,10 @@ A single-seed run (matches one column of the multi-seed protocol):
 ```bash
 python eval_ppo.py     --episodes 20 --seed 0 --tube 0.12
 python eval_ppo_mpc.py --episodes 20 --seed 0 \
+    --mpc-horizon 7 --tube 0.12 --mpc-stride 1 \
+    --slack-penalty 1e3 --velocity-penalty 5e4 --barrier-velocity-weight 0.03
+# same call + --no-blf reproduces the middle column of the ablation table
+python eval_ppo_mpc.py --episodes 20 --seed 0 --no-blf \
     --mpc-horizon 7 --tube 0.12 --mpc-stride 1 \
     --slack-penalty 1e3 --velocity-penalty 5e4 --barrier-velocity-weight 0.03
 ```

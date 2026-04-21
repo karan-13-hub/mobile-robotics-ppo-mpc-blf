@@ -68,35 +68,50 @@ random start (env seed). Reach tol = 15 cm. Units: metres / metres/second.
 Seeds = [0, 20, 40, 60, 80].  Reported as  mean +/- std_seed [+/- std_ep],
 where std_seed is over the 5 seed-level means (n=5) and std_ep is over all
 100 individual episodes (n=100).  Tube threshold = 12 cm.
+
+Three configurations, same PPO checkpoint (logs/continue_7M/best_model.zip):
+  - PPO               : raw policy, no MPC, no BLF
+  - MPC (no BLF)      : MPC NLP runs every step as a pure tracking optimiser
+                        (--no-blf: outer-tube fence + descent constraint off)
+  - MPC + BLF         : full safety filter (the headline configuration)
+
 Source: logs/multi_seed/summary.json  (regenerated 2026-04-20).
 
-                              PPO                                 MPC-BLF
-  pos RMSE  [m]      0.1413 +/- 0.0038 [+/- 0.0220]     0.0643 +/- 0.0008 [+/- 0.0061]
-  vel RMSE  [m/s]    0.1719 +/- 0.0157 [+/- 0.0522]     0.0665 +/- 0.0032 [+/- 0.0142]
-  peak err  [m]      0.2146 +/- 0.0057 [+/- 0.0354]     0.0884 +/- 0.0013 [+/- 0.0078]
-  tube viol >12 cm   53.53% +/- 1.45%  [+/- 9.71%]      0.00%  +/- 0.00%  [+/- 0.00%]
-  median solve [ms]  1.22   +/- 0.07   [+/- 0.10]       33.39  +/- 0.28   [+/- 0.83]
-  per-ep peak  [ms]  2.58   +/- 0.35   [+/- 1.76]       58.22  +/- 1.87   [+/- 14.23]
-  abs peak    [ms]   10.44                              109.90
-  MPC fallback           --                              0.00 %
-  goal reach rate       100.00 % (100/100)              100.00 % (100/100)
-  crash rate              0.00 %                          0.00 %
+                              PPO                                 MPC (no BLF)                         MPC + BLF
+  pos RMSE  [m]      0.1413 +/- 0.0038 [+/- 0.0220]     0.0808 +/- 0.0041 [+/- 0.0157]     0.0643 +/- 0.0008 [+/- 0.0061]
+  vel RMSE  [m/s]    0.1719 +/- 0.0157 [+/- 0.0522]     0.0744 +/- 0.0026 [+/- 0.0157]     0.0665 +/- 0.0032 [+/- 0.0142]
+  peak err  [m]      0.2146 +/- 0.0057 [+/- 0.0354]     0.1182 +/- 0.0069 [+/- 0.0258]     0.0884 +/- 0.0013 [+/- 0.0078]
+  tube viol >12 cm   53.53% +/- 1.45%  [+/- 9.71%]      14.45% +/- 5.21%  [+/- 16.44%]     0.00%  +/- 0.00%  [+/- 0.00%]
+  median solve [ms]  1.22   +/- 0.07   [+/- 0.10]       28.16  +/- 0.34   [+/- 1.48]       33.39  +/- 0.28   [+/- 0.83]
+  per-ep peak  [ms]  2.58   +/- 0.35   [+/- 1.76]       40.75  +/- 0.52   [+/- 14.23]      58.22  +/- 1.87   [+/- 14.23]
+  abs peak    [ms]   10.44                              111.70                             109.90
+  MPC fallback           --                              0.00 %                             0.00 %
+  goal reach rate       100.00 % (100/100)              100.00 % (100/100)                 100.00 % (100/100)
+  crash rate              0.00 %                          0.00 %                             0.00 %
+
+Take-away: MPC tracking alone recovers most of the tracking win (pos RMSE
+0.1413 -> 0.0808, a 43 % cut); the BLF descent constraint adds a further
+20 % improvement on tracking AND collapses the tube-violation rate from
+14.45 % to 0 %, which is the whole point of the safety filter.
 
 Per-seed means (PPO):
-  seed=0   pos=0.1442 vel=0.1598 peak=0.2192 viol=54.54% medslv=1.23 pkslv=2.58
-  seed=20  pos=0.1404 vel=0.1568 peak=0.2107 viol=52.54% medslv=1.34 pkslv=2.28
-  seed=40  pos=0.1470 vel=0.1989 peak=0.2236 viol=55.85% medslv=1.18 pkslv=2.44
-  seed=60  pos=0.1381 vel=0.1641 peak=0.2104 viol=51.91% medslv=1.22 pkslv=3.24
-  seed=80  pos=0.1370 vel=0.1800 peak=0.2092 viol=52.81% medslv=1.15 pkslv=2.35
-Per-seed means (MPC-BLF):
+  seed=0   pos=0.1442 vel=0.1598 peak=0.2192 viol=54.54% medslv=1.23  pkslv=2.58
+  seed=20  pos=0.1404 vel=0.1568 peak=0.2107 viol=52.54% medslv=1.34  pkslv=2.28
+  seed=40  pos=0.1470 vel=0.1989 peak=0.2236 viol=55.85% medslv=1.18  pkslv=2.44
+  seed=60  pos=0.1381 vel=0.1641 peak=0.2104 viol=51.91% medslv=1.22  pkslv=3.24
+  seed=80  pos=0.1370 vel=0.1800 peak=0.2092 viol=52.81% medslv=1.15  pkslv=2.35
+Per-seed means (MPC, BLF OFF):
+  seed=0   pos=0.0868 vel=0.0725 peak=0.1279 viol=21.78% medslv=27.89 pkslv=40.83
+  seed=20  pos=0.0835 vel=0.0712 peak=0.1240 viol=18.46% medslv=28.74 pkslv=41.72
+  seed=40  pos=0.0762 vel=0.0788 peak=0.1108 viol=8.63%  medslv=27.84 pkslv=40.41
+  seed=60  pos=0.0811 vel=0.0737 peak=0.1177 viol=14.58% medslv=28.34 pkslv=40.59
+  seed=80  pos=0.0764 vel=0.0757 peak=0.1106 viol=8.79%  medslv=27.99 pkslv=40.21
+Per-seed means (MPC + BLF):
   seed=0   pos=0.0657 vel=0.0645 peak=0.0910 viol=0.00%  medslv=33.59 pkslv=61.15
   seed=20  pos=0.0641 vel=0.0626 peak=0.0882 viol=0.00%  medslv=33.48 pkslv=56.25
   seed=40  pos=0.0638 vel=0.0718 peak=0.0877 viol=0.00%  medslv=33.48 pkslv=57.60
   seed=60  pos=0.0644 vel=0.0655 peak=0.0875 viol=0.00%  medslv=33.57 pkslv=59.56
   seed=80  pos=0.0633 vel=0.0683 peak=0.0874 viol=0.00%  medslv=32.84 pkslv=56.55
-
-(The single-seed-0 numbers above were the legacy values used in earlier
-plots; they remain consistent within ~1 sigma of the new 5-seed estimate.)
 
 ================================================================================
  2. Disturbance rejection   (videos/disturbance/*_ppo.mp4  and  *_mpc_blf.mp4)
@@ -205,6 +220,8 @@ a shifted COM rather than transiently reject a pulse.
  # 5-seed x 20-episode aggregate trajectory-tracking metrics
  # (writes per-run logs and summary.json under logs/multi_seed/)
  python scripts/eval_multi_seed.py    # default seeds [0, 20, 40, 60, 80]
+ # BLF ablation (MPC tracking only, safety constraint disabled)
+ python scripts/eval_multi_seed.py --skip-ppo --skip-mpc --out-suffix _only_no_blf
 
  # Single-seed equivalent (one column of the multi-seed protocol)
  python eval_ppo.py     --episodes 20 --seed 0 --tube 0.12

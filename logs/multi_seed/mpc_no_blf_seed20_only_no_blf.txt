@@ -1,0 +1,39 @@
+/home/kmirakho/Documents/mobile-robotics/venv/lib/python3.12/site-packages/stable_baselines3/common/on_policy_algorithm.py:150: UserWarning: You are trying to run PPO on the GPU, but it is primarily intended to run on the CPU when not using a CNN policy (you are using ActorCriticPolicy which should be a MlpPolicy). See https://github.com/DLR-RM/stable-baselines3/issues/1245 for more info. You can pass `device='cpu'` or `export CUDA_VISIBLE_DEVICES=` to force using the CPU.Note: The model will train, but the GPU utilization will be poor and the training might take longer than on CPU.
+  warnings.warn(
+Evaluating: PPO + MPC (BLF disabled, tube=12.0 cm, N=7)
+Running 20 deterministic episodes...
+  ep 00 | T=3.24s len=5.24s | pos_RMSE=0.078 vel_RMSE=0.067 ee_RMSE=0.212 | final_d=0.067 | REACH | tube_viol=0.0% peak_e=0.108 solve=29.6/92.6ms act=100% fb=0%
+  ep 01 | T=2.40s len=4.40s | pos_RMSE=0.076 vel_RMSE=0.073 ee_RMSE=0.201 | final_d=0.080 | REACH | tube_viol=0.0% peak_e=0.103 solve=27.5/38.8ms act=100% fb=0%
+  ep 02 | T=2.79s len=4.79s | pos_RMSE=0.089 vel_RMSE=0.089 ee_RMSE=0.179 | final_d=0.080 | REACH | tube_viol=29.1% peak_e=0.142 solve=27.8/51.5ms act=100% fb=0%
+  ep 03 | T=3.91s len=5.91s | pos_RMSE=0.104 vel_RMSE=0.062 ee_RMSE=0.181 | final_d=0.087 | REACH | tube_viol=44.1% peak_e=0.155 solve=28.1/35.2ms act=100% fb=0%
+  ep 04 | T=2.69s len=4.69s | pos_RMSE=0.071 vel_RMSE=0.084 ee_RMSE=0.206 | final_d=0.057 | REACH | tube_viol=0.0% peak_e=0.101 solve=30.1/37.2ms act=100% fb=0%
+  ep 05 | T=2.00s len=4.00s | pos_RMSE=0.049 vel_RMSE=0.070 ee_RMSE=0.186 | final_d=0.071 | REACH | tube_viol=0.0% peak_e=0.076 solve=28.0/35.5ms act=100% fb=0%
+  ep 06 | T=4.03s len=6.03s | pos_RMSE=0.118 vel_RMSE=0.065 ee_RMSE=0.182 | final_d=0.085 | REACH | tube_viol=49.3% peak_e=0.176 solve=27.5/40.0ms act=100% fb=0%
+  ep 07 | T=2.92s len=4.92s | pos_RMSE=0.094 vel_RMSE=0.082 ee_RMSE=0.201 | final_d=0.080 | REACH | tube_viol=27.8% peak_e=0.140 solve=28.0/34.2ms act=100% fb=0%
+  ep 08 | T=3.87s len=5.88s | pos_RMSE=0.064 vel_RMSE=0.051 ee_RMSE=0.204 | final_d=0.077 | REACH | tube_viol=0.0% peak_e=0.083 solve=27.7/34.6ms act=100% fb=0%
+  ep 09 | T=4.05s len=6.06s | pos_RMSE=0.085 vel_RMSE=0.059 ee_RMSE=0.163 | final_d=0.066 | REACH | tube_viol=19.5% peak_e=0.130 solve=30.3/48.4ms act=100% fb=0%
+  ep 10 | T=3.71s len=5.72s | pos_RMSE=0.107 vel_RMSE=0.069 ee_RMSE=0.178 | final_d=0.081 | REACH | tube_viol=44.7% peak_e=0.164 solve=29.8/45.1ms act=100% fb=0%
+  ep 11 | T=3.64s len=5.65s | pos_RMSE=0.090 vel_RMSE=0.068 ee_RMSE=0.175 | final_d=0.067 | REACH | tube_viol=25.5% peak_e=0.137 solve=29.9/35.0ms act=100% fb=0%
+  ep 12 | T=3.26s len=5.27s | pos_RMSE=0.093 vel_RMSE=0.069 ee_RMSE=0.205 | final_d=0.079 | REACH | tube_viol=25.2% peak_e=0.131 solve=28.0/33.9ms act=100% fb=0%
+  ep 13 | T=2.00s len=4.00s | pos_RMSE=0.045 vel_RMSE=0.060 ee_RMSE=0.183 | final_d=0.072 | REACH | tube_viol=0.0% peak_e=0.073 solve=27.9/34.8ms act=100% fb=0%
+  ep 14 | T=3.81s len=5.82s | pos_RMSE=0.100 vel_RMSE=0.067 ee_RMSE=0.172 | final_d=0.073 | REACH | tube_viol=38.1% peak_e=0.155 solve=30.0/53.2ms act=100% fb=0%
+  ep 15 | T=2.79s len=4.79s | pos_RMSE=0.066 vel_RMSE=0.087 ee_RMSE=0.209 | final_d=0.045 | REACH | tube_viol=0.0% peak_e=0.098 solve=28.4/37.4ms act=100% fb=0%
+  ep 16 | T=3.65s len=5.65s | pos_RMSE=0.093 vel_RMSE=0.071 ee_RMSE=0.182 | final_d=0.067 | REACH | tube_viol=29.1% peak_e=0.142 solve=29.9/36.9ms act=100% fb=0%
+  ep 17 | T=2.42s len=4.43s | pos_RMSE=0.076 vel_RMSE=0.076 ee_RMSE=0.202 | final_d=0.076 | REACH | tube_viol=0.0% peak_e=0.103 solve=28.0/36.5ms act=100% fb=0%
+  ep 18 | T=2.89s len=4.90s | pos_RMSE=0.096 vel_RMSE=0.082 ee_RMSE=0.187 | final_d=0.081 | REACH | tube_viol=36.7% peak_e=0.148 solve=28.4/36.6ms act=100% fb=0%
+  ep 19 | T=3.37s len=5.38s | pos_RMSE=0.077 vel_RMSE=0.073 ee_RMSE=0.206 | final_d=0.045 | REACH | tube_viol=0.0% peak_e=0.116 solve=30.0/37.0ms act=100% fb=0%
+
+--- PPO + MPC (BLF disabled, tube=12.0 cm, N=7) ---
+Episodes                            : 20
+Crash rate                          : 0.00%
+Goal reach rate (tol=0.15 m)   : 100.00%
+Position tracking RMSE  [m]         : 0.0836
+Velocity tracking RMSE  [m/s]       : 0.0713
+End-effector tracking RMSE [m]      : 0.1907
+Final settling error    [m]         : 0.0718
+Tube violation rate (||e|| > 12.0 cm) : 18.46%
+Peak tracking error     [m]         : 0.1240
+MPC median solve time   [ms]        : 28.21
+MPC peak  solve time    [ms]        : 92.63
+MPC active rate (NLP actually solved): 100.00%
+MPC fallback rate                   : 0.00%

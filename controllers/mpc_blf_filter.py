@@ -127,6 +127,7 @@ class MPCBLFSafetyFilter:
         v_floor: float = 1e-4,
         solver: str = "ipopt",
         verbose: bool = False,
+        enable_blf: bool = True,
     ):
         self.model = mj_model
         self.N = int(horizon)
@@ -156,6 +157,11 @@ class MPCBLFSafetyFilter:
         self.v_floor = float(v_floor)
         self.solver_name = str(solver).lower()
         self.verbose = bool(verbose)
+        # When False, the MPC NLP becomes a pure receding-horizon tracking
+        # optimiser: no outer-tube hard fence, no BLF descent constraint,
+        # no scalar slack. Used for the "MPC, no BLF" ablation that asks
+        # how much of the safety win is the barrier vs. the planner alone.
+        self.enable_blf = bool(enable_blf)
 
         self.dt = float(mj_model.opt.timestep)
 
@@ -481,32 +487,40 @@ class MPCBLFSafetyFilter:
             z = z_expr(e_p, e_v)
             return z / ca.fmax(delta2 - z, v_floor)
 
-        # Outer-tube hard fence at every stage on the same combined norm,
-        # so V stays well-defined everywhere the NLP can wander. Velocity
-        # error is v - v_ref so a moving trajectory is not penalised for
-        # simply having non-zero velocity.
-        for k in range(N + 1):
-            e_p_k = X[0:3, k] - ref_p[:, k]
-            e_v_k = X[3:6, k] - ref_v_p[:, k]
-            opti.subject_to(z_expr(e_p_k, e_v_k) <= outer2)
+        if self.enable_blf:
+            # Outer-tube hard fence at every stage on the same combined norm,
+            # so V stays well-defined everywhere the NLP can wander. Velocity
+            # error is v - v_ref so a moving trajectory is not penalised for
+            # simply having non-zero velocity.
+            for k in range(N + 1):
+                e_p_k = X[0:3, k] - ref_p[:, k]
+                e_v_k = X[3:6, k] - ref_v_p[:, k]
+                opti.subject_to(z_expr(e_p_k, e_v_k) <= outer2)
 
-        # Softened BLF descent V_{k+1} <= beta_k * V_k + sigma,
-        # sigma >= 0, k = 0 .. N-1.
-        opti.subject_to(sigma >= 0.0)
-        e_p0 = X[0:3, 0] - ref_p[:, 0]
-        e_v0 = X[3:6, 0] - ref_v_p[:, 0]
-        V_prev = V_expr(e_p0, e_v0)
-        for k in range(N):
-            e_p_kp1 = X[0:3, k + 1] - ref_p[:, k + 1]
-            e_v_kp1 = X[3:6, k + 1] - ref_v_p[:, k + 1]
-            V_next = V_expr(e_p_kp1, e_v_kp1)
-            opti.subject_to(V_next <= float(self.betas[k]) * V_prev + sigma)
-            V_prev = V_next
+            # Softened BLF descent V_{k+1} <= beta_k * V_k + sigma,
+            # sigma >= 0, k = 0 .. N-1.
+            opti.subject_to(sigma >= 0.0)
+            e_p0 = X[0:3, 0] - ref_p[:, 0]
+            e_v0 = X[3:6, 0] - ref_v_p[:, 0]
+            V_prev = V_expr(e_p0, e_v0)
+            for k in range(N):
+                e_p_kp1 = X[0:3, k + 1] - ref_p[:, k + 1]
+                e_v_kp1 = X[3:6, k + 1] - ref_v_p[:, k + 1]
+                V_next = V_expr(e_p_kp1, e_v_kp1)
+                opti.subject_to(V_next <= float(self.betas[k]) * V_prev + sigma)
+                V_prev = V_next
+        else:
+            # BLF disabled: pin the slack to zero so the variable still has
+            # a unique solution, but no descent / outer-tube constraints
+            # are enforced. The NLP collapses to a pure tracking optimiser
+            # over the rotor commands.
+            opti.subject_to(sigma == 0.0)
 
         cost = ca.sumsqr(U[:, 0] - u_ppo_p)
         for k in range(1, N):
             cost += self.lambda_smooth * ca.sumsqr(U[:, k] - U[:, k - 1])
-        cost += self.rho * sigma * sigma
+        if self.enable_blf:
+            cost += self.rho * sigma * sigma
         # Stage-wise velocity damping (optional). D-term-style: penalises
         # the velocity *tracking error* ||v_k - v_ref_k||^2 at every planned
         # stage k = 1 .. N, normalised by N so the weight scale does not
@@ -603,13 +617,15 @@ class MPCBLFSafetyFilter:
         ev0 = x_meas[3:6] - ref_vel_traj[0]
         z0 = float(np.dot(e0, e0) + self.alpha_blf * np.dot(ev0, ev0))
         outer2 = self.outer_tube ** 2
-        if z0 >= outer2:
+        if self.enable_blf and z0 >= outer2:
             info["fallback"] = True
             info["fallback_reason"] = "outside_outer_tube"
             self.reset()
             return a_out, info
 
-        # V(e_0) for diagnostics.
+        # V(e_0) for diagnostics. Only meaningful inside the outer tube; if
+        # BLF is disabled and we are outside, just report the raw barrier
+        # expression so the log still has a finite number to compare.
         denom0 = max(self.delta ** 2 - z0, self.v_floor)
         info["V0"] = float(z0 / denom0)
 

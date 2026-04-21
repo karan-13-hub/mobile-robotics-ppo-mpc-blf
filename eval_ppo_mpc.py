@@ -254,6 +254,10 @@ def main():
     parser.add_argument("--goal-tol", type=float, default=0.15)
     parser.add_argument("--seed", type=int, default=0)
 
+    parser.add_argument("--no-blf", action="store_true",
+                        help="Disable the BLF safety constraint inside the "
+                             "MPC NLP, leaving a pure tracking optimiser. "
+                             "Useful as a 'MPC without BLF' ablation.")
     parser.add_argument("--no-mpc", action="store_true",
                         help="Bypass the MPC filter; reproduces eval_ppo.py.")
     parser.add_argument("--mpc-horizon", type=int, default=7)
@@ -306,8 +310,14 @@ def main():
         print(f"Model not found at {args.model}.")
         return
 
-    label = "PPO baseline (no MPC)" if args.no_mpc else \
-            f"PPO + MPC-BLF (tube={args.tube*100:.1f} cm, N={args.mpc_horizon})"
+    if args.no_mpc:
+        label = "PPO baseline (no MPC)"
+    elif args.no_blf:
+        label = (f"PPO + MPC (BLF disabled, tube={args.tube*100:.1f} cm, "
+                 f"N={args.mpc_horizon})")
+    else:
+        label = (f"PPO + MPC-BLF (tube={args.tube*100:.1f} cm, "
+                 f"N={args.mpc_horizon})")
     print(f"Evaluating: {label}")
 
     model = PPO.load(args.model)
@@ -327,6 +337,7 @@ def main():
             barrier_velocity_weight=args.barrier_velocity_weight,
             solver=args.mpc_solver,
             verbose=args.mpc_verbose,
+            enable_blf=not args.no_blf,
         )
 
     rng_seed = args.seed

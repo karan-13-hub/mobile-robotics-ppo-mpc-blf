@@ -1,0 +1,22 @@
+>>> /home/kmirakho/Documents/mobile-robotics/venv/bin/python eval_ppo_mpc.py --model logs/continue_7M/best_model.zip --episodes 20 --seed 0 --mpc-horizon 7 --tube 0.12 --mpc-stride 1 --slack-penalty 1000.0 --velocity-penalty 50000.0 --barrier-velocity-weight 0.03 --no-blf
+    parsed 20 episodes in 308.1s
+>>> /home/kmirakho/Documents/mobile-robotics/venv/bin/python eval_ppo_mpc.py --model logs/continue_7M/best_model.zip --episodes 20 --seed 20 --mpc-horizon 7 --tube 0.12 --mpc-stride 1 --slack-penalty 1000.0 --velocity-penalty 50000.0 --barrier-velocity-weight 0.03 --no-blf
+    parsed 20 episodes in 315.3s
+>>> /home/kmirakho/Documents/mobile-robotics/venv/bin/python eval_ppo_mpc.py --model logs/continue_7M/best_model.zip --episodes 20 --seed 40 --mpc-horizon 7 --tube 0.12 --mpc-stride 1 --slack-penalty 1000.0 --velocity-penalty 50000.0 --barrier-velocity-weight 0.03 --no-blf
+    parsed 20 episodes in 283.7s
+>>> /home/kmirakho/Documents/mobile-robotics/venv/bin/python eval_ppo_mpc.py --model logs/continue_7M/best_model.zip --episodes 20 --seed 60 --mpc-horizon 7 --tube 0.12 --mpc-stride 1 --slack-penalty 1000.0 --velocity-penalty 50000.0 --barrier-velocity-weight 0.03 --no-blf
+    parsed 20 episodes in 313.2s
+>>> /home/kmirakho/Documents/mobile-robotics/venv/bin/python eval_ppo_mpc.py --model logs/continue_7M/best_model.zip --episodes 20 --seed 80 --mpc-horizon 7 --tube 0.12 --mpc-stride 1 --slack-penalty 1000.0 --velocity-penalty 50000.0 --barrier-velocity-weight 0.03 --no-blf
+    parsed 20 episodes in 292.7s
+
+=== summary ===
+[mpc_no_blf] n_seeds=5 n_eps=100
+            pos_rmse: 0.0808   std_seeds=0.0041   std_eps=0.0157
+            vel_rmse: 0.0744   std_seeds=0.0026   std_eps=0.0157
+            peak_err: 0.1182   std_seeds=0.0069   std_eps=0.0258
+       tube_viol_pct: 14.4480   std_seeds=5.2084   std_eps=16.4377
+     solve_median_ms: 28.1600   std_seeds=0.3396   std_eps=1.4760
+        solve_max_ms: 40.7530   std_seeds=0.5243   std_eps=14.2311
+        fallback_pct: 0.0000   std_seeds=0.0000   std_eps=0.0000
+
+wrote /home/kmirakho/Documents/mobile-robotics/logs/multi_seed/summary_only_no_blf.json

@@ -218,9 +218,10 @@ def _plot_single(step, val, title, ylabel, out_path, *, smooth=True,
     if phase1_end is not None and step.size and step.max() > phase1_end:
         ax.axvline(phase1_end, color="#888", ls="--", lw=1.0)
         ax.annotate(
-            "phase1 → phase2", xy=(phase1_end, ax.get_ylim()[1]),
+            f"phase1 → phase2\nwarm-start @ {phase1_end / 1e6:.2f} M",
+            xy=(phase1_end, ax.get_ylim()[1]),
             xytext=(5, -5), textcoords="offset points",
-            fontsize=10, color="#666", va="top",
+            fontsize=9, color="#666", va="top",
         )
     ax.set_xlabel("env steps")
     ax.set_ylabel(ylabel)
@@ -232,6 +233,36 @@ def _plot_single(step, val, title, ylabel, out_path, *, smooth=True,
     print(f"[plot] wrote {out_path}")
 
 
+def _detect_phase2_start(runs: dict[str, dict[str, np.ndarray]]) -> int | None:
+    """Return the env-step where phase2 actually warm-started.
+
+    phase2 warm-starts from EvalCallback's best_model.zip, which is almost
+    never saved exactly at phase1_steps, so using the configured phase1_steps
+    as the phase-boundary marker is off by the gap between best_model and
+    final_model. Read the true start from the tb events instead.
+    """
+    phase2_runs = [name for name in runs if name.startswith("phase2")]
+    if not phase2_runs:
+        return None
+    starts = []
+    for name in phase2_runs:
+        for arr in runs[name].values():
+            if arr.shape[1] > 0:
+                starts.append(int(arr[0, 0]))
+                break
+    return min(starts) if starts else None
+
+
+def _total_env_steps(runs: dict[str, dict[str, np.ndarray]]) -> int:
+    """Highest env-step seen across all tags / runs."""
+    top = 0
+    for tags in runs.values():
+        for arr in tags.values():
+            if arr.shape[1] > 0:
+                top = max(top, int(arr[0, -1]))
+    return top
+
+
 def make_plots(phase1_steps: int):
     PLOT_DIR.mkdir(parents=True, exist_ok=True)
     print(f"[plots] reading tensorboard events from {TB_DIR}")
@@ -240,6 +271,13 @@ def make_plots(phase1_steps: int):
         print("[plots] no tb runs found; skipping plots")
         return
 
+    phase2_start = _detect_phase2_start(runs)
+    total_steps = _total_env_steps(runs)
+    if phase2_start is None:
+        phase2_start = phase1_steps
+    print(f"[plots] phase2 warm-started at step {phase2_start:,}; "
+          f"training covers 0 -> {total_steps:,} env steps")
+
     def _plot(tag: str, title: str, ylabel: str, stem: str, *,
               smooth: bool = True):
         x, y = _concat_across_runs(runs, tag)
@@ -247,8 +285,9 @@ def make_plots(phase1_steps: int):
             print(f"[plots] tag {tag!r} not found in any run; skipped")
             return
         out = PLOT_DIR / f"training_{stem}.png"
-        _plot_single(x, y, title, ylabel, out,
-                     smooth=smooth, phase1_end=phase1_steps)
+        full_title = f"{title}  —  {total_steps / 1e6:.2f} M env steps total"
+        _plot_single(x, y, full_title, ylabel, out,
+                     smooth=smooth, phase1_end=phase2_start)
 
     _plot("rollout/ep_rew_mean",
           "Mean episode reward during PPO training",
