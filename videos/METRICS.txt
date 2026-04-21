@@ -145,6 +145,17 @@ Disturbance: lateral body force, 0.8 N peak along [0, 1, 0], 3 gusts over 2 s.
     MPC solve median/peak = 42.2 / 100.4 ms     fallback = 0.0 %
     crashed = no
 
+  videos/disturbance/wind_low_mpc_noblf.mp4   PPO + MPC (BLF OFF, ablation)
+    Phase 1 hover     pos mean/max/RMSE = 0.0264 / 0.0490 / 0.0306
+                      vel mean/max/RMSE = 0.0369 / 0.0848 / 0.0413
+    Phase 2 disturb   pos mean/max/RMSE = 0.0545 / 0.0616 / 0.0547
+                      vel mean/max/RMSE = 0.0494 / 0.1226 / 0.0592
+    Phase 3 stabil.   pos mean/max/RMSE = 0.0578 / 0.0629 / 0.0579
+                      vel mean/max/RMSE = 0.0182 / 0.0871 / 0.0237
+    settled within 10 s = no (RMSE hovers ~5.8 cm, just above the 5 cm band)
+    MPC solve median/peak = 23.4 / 82.4 ms      fallback = 0.0 %
+    crashed = no
+
 -------------------------------  wind-high  ----------------------------------
 Disturbance: lateral body force, 2.5 N peak along [0, 1, 0], 3 gusts over 2 s.
 
@@ -167,6 +178,17 @@ Disturbance: lateral body force, 2.5 N peak along [0, 1, 0], 3 gusts over 2 s.
                       vel mean/max/RMSE = 0.0497 / 0.2950 / 0.0671
     settled within 10 s = yes (at 0.87 s after disturbance ends)
     MPC solve median/peak = 42.1 / 117.3 ms     fallback = 0.6 %
+    crashed = no
+
+  videos/disturbance/wind_high_mpc_noblf.mp4  PPO + MPC (BLF OFF, ablation)
+    Phase 1 hover     pos mean/max/RMSE = 0.0264 / 0.0490 / 0.0306
+                      vel mean/max/RMSE = 0.0369 / 0.0848 / 0.0413
+    Phase 2 disturb   pos mean/max/RMSE = 0.0605 / 0.0848 / 0.0613
+                      vel mean/max/RMSE = 0.1608 / 0.3918 / 0.1954
+    Phase 3 stabil.   pos mean/max/RMSE = 0.0582 / 0.0784 / 0.0589
+                      vel mean/max/RMSE = 0.0839 / 0.2792 / 0.1013
+    settled within 10 s = no (RMSE hovers ~5.9 cm)
+    MPC solve median/peak = 30.0 / 82.8 ms      fallback = 0.0 %
     crashed = no
 
 -------------------------------  arm-fold  -----------------------------------
@@ -194,14 +216,39 @@ a shifted COM rather than transiently reject a pulse.
     MPC solve median/peak = 41.8 / 103.9 ms     fallback = 0.0 %
     crashed = no
 
+  videos/disturbance/arm_fold_mpc_noblf.mp4   PPO + MPC (BLF OFF, ablation)
+    Phase 1 hover     pos mean/max/RMSE = 0.0264 / 0.0490 / 0.0306
+                      vel mean/max/RMSE = 0.0369 / 0.0848 / 0.0413
+    Phase 2 disturb   pos mean/max/RMSE = 0.0240 / 0.0489 / 0.0274
+                      vel mean/max/RMSE = 0.0556 / 0.1114 / 0.0599
+    Phase 3 stabil.   pos mean/max/RMSE = 0.0316 / 0.0374 / 0.0322
+                      vel mean/max/RMSE = 0.0262 / 0.0832 / 0.0288
+    settled within 10 s = yes (at 0.01 s after disturbance ends)
+    MPC solve median/peak = 28.0 / 83.9 ms      fallback = 0.0 %
+    crashed = no
+
 ================================================================================
- 3. Summary: Phase 3 stabilize (PPO vs MPC-BLF)
+ 3. Summary: Phase 3 stabilize (PPO  vs  MPC no-BLF  vs  MPC-BLF)
 ================================================================================
-  mode        pos RMSE             pos max              vel RMSE             vel max              settled <10 s          crash
-              PPO     MPC-BLF      PPO     MPC-BLF      PPO     MPC-BLF      PPO     MPC-BLF      PPO  MPC-BLF          PPO  MPC-BLF
-  wind-low    0.0563  0.0526       0.0715  0.0565       0.0573  0.0204       0.1639  0.1011       no    yes (8.97)      no    no
-  wind-high   0.1379  0.0471       0.5231  0.0746       0.6286  0.0671       2.1411  0.2950       no    yes (0.87)      no    no
-  arm-fold    0.2360  0.0309       1.4479  0.0355       1.2042  0.0235       6.0613  0.0549       --    yes (0.01)      YES   no
+Columns per metric are PPO / MPC(no-BLF) / MPC+BLF.
+"no-BLF" = same MPC NLP every control step but outer-tube fence + BLF
+descent constraint disabled (`--no-blf`), so MPC is a pure tracking
+optimiser.  Settling = pos err < 5 cm held for >= 0.5 s after disturbance
+ends.  All columns use the same PPO checkpoint and seed 0.
+
+  mode        pos RMSE [m]               pos max [m]                vel RMSE [m/s]             vel max [m/s]              settled <10 s                   crash
+              PPO    no-BLF  +BLF        PPO    no-BLF  +BLF        PPO    no-BLF  +BLF        PPO    no-BLF  +BLF        PPO  no-BLF    +BLF          PPO  no-BLF  +BLF
+  wind-low    0.0563 0.0579  0.0526      0.0715 0.0629  0.0565      0.0573 0.0237  0.0204      0.1639 0.0871  0.1011      no   no        yes (8.97)    no   no      no
+  wind-high   0.1379 0.0589  0.0471      0.5231 0.0784  0.0746      0.6286 0.1013  0.0671      2.1411 0.2792  0.2950      no   no        yes (0.87)    no   no      no
+  arm-fold    0.2360 0.0322  0.0309      1.4479 0.0374  0.0355      1.2042 0.0288  0.0235      6.0613 0.0832  0.0549      --   yes(0.01) yes (0.01)    YES  no      no
+
+Take-away: when the disturbance is *small* (wind-low, < 1 N) the BLF
+constraint is rarely active anyway, so MPC-no-BLF tracks within ~5 mm of
+the full filter and the two videos are visually indistinguishable.  Where
+the BLF matters is when the disturbance pushes the state toward the tube
+edge (wind-high) or when the safety-tube descent term is what pulls the
+controller back inside the 5 cm band - both of those cases show up as
+the settled<10 s column flipping from "no" to "yes" only for MPC+BLF.
 
 ================================================================================
  Reproduction commands
@@ -237,4 +284,9 @@ a shifted COM rather than transiently reject a pulse.
        --tube 0.12 --mpc-stride 2 \
        --slack-penalty 1e4 --velocity-penalty 5e4 --barrier-velocity-weight 0.1 \
        --save-video videos/disturbance/${m//-/_}_mpc_blf.mp4
+   # BLF ablation: same MPC NLP, outer fence + descent constraint disabled
+   python eval_ppo_disturbance.py --mode $m --seed 0 --stabilize-time 10.0 --mpc-blf --no-blf \
+       --tube 0.12 --mpc-stride 2 \
+       --slack-penalty 1e4 --velocity-penalty 5e4 --barrier-velocity-weight 0.1 \
+       --save-video videos/disturbance/${m//-/_}_mpc_noblf.mp4
  done

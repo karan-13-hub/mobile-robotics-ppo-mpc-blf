@@ -486,6 +486,10 @@ def main():
 
     parser.add_argument("--mpc-blf", action="store_true",
                         help="Run with the MPC-BLF filter in front of PPO.")
+    parser.add_argument("--no-blf", action="store_true",
+                        help="When --mpc-blf is set, disable the barrier-"
+                             "Lyapunov safety constraint (MPC becomes a pure "
+                             "tracking optimiser). Used for the BLF ablation.")
     parser.add_argument("--mpc-horizon", type=int, default=7)
     parser.add_argument("--tube", type=float, default=0.15)
     parser.add_argument("--mpc-stride", type=int, default=3)
@@ -527,7 +531,12 @@ def main():
         print(f"Model not found at {args.model}.")
         return
 
-    label_filter = "PPO + MPC-BLF" if args.mpc_blf else "PPO only"
+    if args.mpc_blf and args.no_blf:
+        label_filter = "PPO + MPC (BLF off)"
+    elif args.mpc_blf:
+        label_filter = "PPO + MPC-BLF"
+    else:
+        label_filter = "PPO only"
     label_force = (f"{force_N:.2f} N peak along {_WIND_DIRECTION.tolist()}, "
                    f"3 gusts over {args.disturb_time:.1f}s"
                    if args.mode.startswith("wind")
@@ -548,6 +557,7 @@ def main():
             slack_penalty=args.slack_penalty, smooth_penalty=args.smooth_penalty,
             velocity_penalty=args.velocity_penalty,
             barrier_velocity_weight=args.barrier_velocity_weight,
+            enable_blf=not args.no_blf,
             solver="fatrop", verbose=False,
         )
 

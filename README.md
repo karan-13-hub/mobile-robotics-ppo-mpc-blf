@@ -71,24 +71,34 @@ extra ~5 ms median NLP (33 ms vs 28 ms) per control step at stride = 1.
 Settling time = first moment position error stays below 5 cm for ≥ 0.5 s
 after the disturbance ends.
 
-| scenario                                  | metric (Phase 3 — stabilize) | PPO only        | PPO + MPC-BLF |
-| :---------------------------------------- | :--------------------------- | --------------: | ------------: |
-| **wind-low** (0.8 N peak, 3 gusts)        | pos RMSE / max [m]           | 0.056 / 0.072   | 0.053 / 0.057 |
-|                                           | vel RMSE / max [m/s]         | 0.057 / 0.164   | 0.020 / 0.101 |
-|                                           | settled within 10 s          | no              | **yes (8.97 s)** |
-|                                           | crashed                      | no              | no            |
-| **wind-high** (2.5 N peak, 3 gusts)       | pos RMSE / max [m]           | 0.138 / 0.523   | 0.047 / 0.075 |
-|                                           | vel RMSE / max [m/s]         | 0.629 / 2.141   | 0.067 / 0.295 |
-|                                           | settled within 10 s          | no              | **yes (0.87 s)** |
-|                                           | crashed                      | no              | no            |
-| **arm-fold** (90° bent-elbow PD hold)     | pos RMSE / max [m]           | 0.236 / 1.448   | 0.031 / 0.036 |
-|                                           | vel RMSE / max [m/s]         | 1.204 / 6.061   | 0.024 / 0.055 |
-|                                           | settled within 10 s          | –               | **yes (0.01 s)** |
-|                                           | crashed                      | **YES**         | no            |
+| scenario                                  | metric (Phase 3 — stabilize) | PPO only        | PPO + MPC (BLF off) | PPO + MPC-BLF |
+| :---------------------------------------- | :--------------------------- | --------------: | ------------------: | ------------: |
+| **wind-low** (0.8 N peak, 3 gusts)        | pos RMSE / max [m]           | 0.056 / 0.072   | 0.058 / 0.063       | 0.053 / 0.057 |
+|                                           | vel RMSE / max [m/s]         | 0.057 / 0.164   | 0.024 / 0.087       | 0.020 / 0.101 |
+|                                           | settled within 10 s          | no              | no                  | **yes (8.97 s)** |
+|                                           | crashed                      | no              | no                  | no            |
+| **wind-high** (2.5 N peak, 3 gusts)       | pos RMSE / max [m]           | 0.138 / 0.523   | 0.059 / 0.078       | 0.047 / 0.075 |
+|                                           | vel RMSE / max [m/s]         | 0.629 / 2.141   | 0.101 / 0.279       | 0.067 / 0.295 |
+|                                           | settled within 10 s          | no              | no                  | **yes (0.87 s)** |
+|                                           | crashed                      | no              | no                  | no            |
+| **arm-fold** (90° bent-elbow PD hold)     | pos RMSE / max [m]           | 0.236 / 1.448   | 0.032 / 0.037       | 0.031 / 0.036 |
+|                                           | vel RMSE / max [m/s]         | 1.204 / 6.061   | 0.029 / 0.083       | 0.024 / 0.055 |
+|                                           | settled within 10 s          | –               | **yes (0.01 s)**    | **yes (0.01 s)** |
+|                                           | crashed                      | **YES**         | no                  | no            |
 
 Same filter, same code path, two different hyper-parameter sets: one tuned
 for a moving min-snap reference (trajectory table), one tuned for hover
 plus disturbance (this table).
+
+**Disturbance BLF ablation.**  MPC-without-BLF already recovers most of
+the gain over raw PPO — it prevents the arm-fold crash outright and cuts
+wind-high Phase-3 pos RMSE 0.138 → 0.059 m — because most of the work
+under small disturbances is done by the tracking optimiser, not the
+safety constraint.  The BLF earns its keep on the *settling* criterion:
+both wind modes plateau at ≈ 6 cm error without it (just outside the
+5 cm settling band) and only snap back inside once the barrier descent
+term `V_{k+1} ≤ β·V_k` is re-enabled, giving the only checkmarks in the
+"settled within 10 s" column for wind-low and wind-high.
 
 ### Videos
 
@@ -104,6 +114,7 @@ videos/
   ppo_mpc_blf/ep00_seed{0,1,2}.mp4     # trajectory, PPO + MPC-BLF
   disturbance/{wind_low,wind_high,arm_fold}_ppo.mp4
   disturbance/{wind_low,wind_high,arm_fold}_mpc_blf.mp4
+  disturbance/{wind_low,wind_high,arm_fold}_mpc_noblf.mp4   # BLF ablation
   METRICS.txt
 ```
 
@@ -248,6 +259,11 @@ for m in wind-low wind-high arm-fold; do
       --tube 0.12 --mpc-stride 2 \
       --slack-penalty 1e4 --velocity-penalty 5e4 --barrier-velocity-weight 0.1 \
       --save-video videos/disturbance/${m//-/_}_mpc_blf.mp4
+  # BLF ablation: same MPC NLP, outer fence + descent constraint disabled
+  python eval_ppo_disturbance.py --mode $m --seed 0 --stabilize-time 10.0 --mpc-blf --no-blf \
+      --tube 0.12 --mpc-stride 2 \
+      --slack-penalty 1e4 --velocity-penalty 5e4 --barrier-velocity-weight 0.1 \
+      --save-video videos/disturbance/${m//-/_}_mpc_noblf.mp4
 done
 ```
 
