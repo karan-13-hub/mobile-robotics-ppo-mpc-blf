@@ -1,8 +1,13 @@
 # Presentation
 
 Self-contained [reveal.js](https://revealjs.com) slide deck for the final
-project, using the videos from `../videos/` and comparison plots generated
-from `videos/METRICS.txt`.
+project. Media uses a symlink `presentation/videos -> ../videos` so you can
+serve from **either** the repo root or `presentation/`.
+
+**Contents (regenerated Apr 2026):** trajectory results from **5 seeds × 20 episodes**
+(100 runs) with three controllers — PPO, PPO + MPC (`--no-blf`), PPO + MPC + BLF —
+plus disturbance videos (PPO / MPC no-BLF / MPC+BLF) and plots from
+`presentation/plots/make_plots.py` (reads `logs/multi_seed/summary.json` when present).
 
 ## View
 
@@ -14,6 +19,8 @@ cd ..                                    # at repo root
 python -m http.server 8000
 # then open http://localhost:8000/presentation/
 ```
+
+Or from this folder: `python -m http.server 8001` → `http://localhost:8001/`
 
 Navigation: `→ / ←` next / previous · `f` fullscreen · `s` speaker notes ·
 `Esc` overview.

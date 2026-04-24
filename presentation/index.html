@@ -24,8 +24,17 @@
     .reveal { color: var(--ink); font-family: "Inter", "Helvetica Neue", system-ui, sans-serif; }
     .reveal .slides section {
       text-align: left;
-      height: 100%;
+      height: 100% !important;
+      top: 0 !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      padding: 24px 28px 28px 28px !important;
+      box-sizing: border-box;
     }
+    /* Clean thin scrollbar so it doesn't hijack the slide */
+    .reveal .slides section::-webkit-scrollbar       { width: 8px; }
+    .reveal .slides section::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+    .reveal .slides section::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
     .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
       text-transform: none;
       font-weight: 700;
@@ -48,7 +57,13 @@
 
     /* MathJax sizing */
     .reveal mjx-container { font-size: 0.95em !important; }
-    .reveal mjx-container[display="true"] { margin: 0.35em 0 !important; }
+    .reveal mjx-container[display="true"] {
+      margin: 0.35em 0 !important;
+      max-width: 100% !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+    }
+    .reveal mjx-container[display="true"] > svg { max-width: 100%; }
     .eq-block {
       background: var(--soft);
       border: 1px solid var(--line);
@@ -91,6 +106,10 @@
     td.num { text-align: right; font-variant-numeric: tabular-nums; }
     tr.highlight td { background: #eef3ff; }
     tr.bad td { background: #fff4f4; }
+    /* Wide aggregate tables (3-way + metrics) */
+    table.compact { font-size: 0.52em; }
+    table.compact th, table.compact td { padding: 4px 5px; line-height: 1.25; }
+    .cols-3.vids { grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
 
     .media-caption { font-size: 0.55em; color: var(--muted); margin-top: 6px; }
 
@@ -171,15 +190,15 @@
       <h3>PPO policy filtered by an MPC with a Barrier Lyapunov Function</h3>
 
       <div class="stat-row" style="margin-top: 30px;">
-        <div class="stat"><div class="val">−54%</div><div class="lab">position RMSE</div></div>
-        <div class="stat"><div class="val">−59%</div><div class="lab">peak error</div></div>
-        <div class="stat"><div class="val">40.7% → 0%</div><div class="lab">tube violations</div></div>
-        <div class="stat"><div class="val">0 / 1</div><div class="lab">arm-fold crashes</div></div>
+        <div class="stat"><div class="val">54%→</div><div class="lab">pos RMSE cut (PPO→BLF)</div></div>
+        <div class="stat"><div class="val">59%→</div><div class="lab">peak err cut</div></div>
+        <div class="stat"><div class="val">53.5%→0%</div><div class="lab">tube viol (&gt;12 cm)</div></div>
+        <div class="stat"><div class="val">14%→0%</div><div class="lab">tube viol (MPC→+BLF)</div></div>
       </div>
 
       <p class="muted" style="margin-top: 28px;">
-        Skydio X2 quadrotor + 3-DoF arm in MuJoCo &nbsp;·&nbsp; PPO (7 M steps, SB3) &nbsp;·&nbsp;
-        CasADi receding-horizon NLP (Fatrop)
+        Skydio X2 + 3-DoF arm, MuJoCo · PPO <code>logs/continue_7M/best_model.zip</code> ·
+        5 seeds × 20 eps = 100 traj episodes · CasADi + Fatrop
       </p>
     </section>
 
@@ -208,8 +227,8 @@
         </div>
         <div>
           <video src="videos/ppo_7M_demo.mp4" muted autoplay loop playsinline controls></video>
-          <div class="media-caption">PPO-only (7 M steps) — visually clean but lateral
-            excursions cross the 12&nbsp;cm tube $\sim\!40\%$ of the time.</div>
+          <div class="media-caption">PPO-only — aggregate $\sim\!54\%$ of steps violate the
+            12&nbsp;cm tube (5 seeds × 20 eps); peaks to $\sim\!21$ cm lateral error.</div>
         </div>
       </div>
     </section>
@@ -565,17 +584,17 @@
       </div>
     </section>
 
-    <!-- ======================================================= Full mathematical pipeline -->
+    <!-- ======================================================= Full pipeline math — part 1 -->
     <section>
       <span class="kicker">2 · Approach</span>
-      <h2>Full mathematical pipeline</h2>
+      <h2>Full pipeline (1/2) — reference, policy, dynamics</h2>
       <div class="cols tight">
         <div>
           <div class="eq-block">
             <div class="label">1. Reference  (min-snap, 7<sup>th</sup>-order)</div>
             \[
               p^{\star}_i(t)=\!\sum_{k=0}^{7}\!a_{i,k}t^{k},\;\;
-              v^{\star}_i(t)=\dot p^{\star}_i(t),
+              v^{\star}_i(t)=\dot p^{\star}_i(t)
             \]
             \[
               T=\mathrm{clip}\!\bigl(\|\mathbf p_f{-}\mathbf p_0\|/v_{\mathrm{avg}},\,T_{\min},T_{\max}\bigr)
@@ -588,12 +607,29 @@
               \mathbf o_t=\bigl[\mathbf q_t,\dot{\mathbf q}_t,\mathbf p^{\star}_{t+1}{-}\mathbf p_t,\mathbf v^{\star}_{t+1}{-}\mathbf v_t,(\mathbf p^{\star}_{t+1}{+}\mathbf d_{\mathrm{ee}}){-}\mathbf{ee}_t\bigr]
             \]
             \[
-              \mathbf a_t=\pi_\theta(\mathbf o_t)\in[-1,1]^7,\;\;
-              \mathrm{ctrl}_{t,i}=\mathrm{lo}_i+\tfrac{a_{t,i}{+}1}{2}(\mathrm{hi}_i{-}\mathrm{lo}_i)
+              \mathbf a_t=\pi_\theta(\mathbf o_t)\in[-1,1]^7
             \]
             \[
-              r_t=2e^{-2\|\mathbf e_p\|^{2}}+e^{-\|\mathbf e_v\|^{2}}+3e^{-3\|\mathbf e_{ee}\|^{2}}-0.01\|\mathbf a_t\|^{2}+0.1
+              \mathrm{ctrl}_{t,i}=\mathrm{lo}_i+\tfrac{a_{t,i}{+}1}{2}(\mathrm{hi}_i{-}\mathrm{lo}_i)
             \]
+          </div>
+        </div>
+
+        <div>
+          <div class="eq-block">
+            <div class="label">Reward used to train $\pi_\theta$ (symbolic)</div>
+            \[
+              r_t = \!\!\sum_{i\in\{p,v,e\}}\!\! w_i\,e^{-k_i\|\mathbf e_i\|^{2}}
+                  - w_u\|\mathbf a_t\|^{2} + b
+            \]
+            \[
+              \;\;\;\;+\; w_g\,e^{-k_g\|\mathbf e_g\|^{2}-k_s\|\mathbf v_t\|^{2}}\mathbf{1}_{t\ge T}
+                  \;-\; C\,\mathbf{1}_{\mathrm{crash}}
+            \]
+            <p class="muted" style="font-size:0.9em; margin: 2px 0 0;">
+              $(w_p,w_v,w_e,w_u,b,w_g,k_p,k_v,k_e,k_g,k_s,C)$
+              $= (2,1,3,0.01,0.1,5,\,2,1,3,50,2,\,50)$.
+            </p>
           </div>
 
           <div class="eq-block">
@@ -603,64 +639,85 @@
               \mathbf u=[c_1{,}c_2{,}c_3{,}c_4]^{\!\top}
             \]
             \[
-              \dot{\mathbf v}=\tfrac{F_z}{m}\mathbf R_{e_3}\!(\boldsymbol\eta)-g\mathbf e_3,\;\;
+              \dot{\mathbf v}=\tfrac{F_z}{m}\mathbf R_{e_3}(\boldsymbol\eta)-g\mathbf e_3,\;\;
               \mathbf J\dot{\boldsymbol\omega}=\boldsymbol\tau-\boldsymbol\omega\!\times\!(\mathbf J\boldsymbol\omega)
             \]
             \[
-              [F_z,\tau_x,\tau_y,\tau_z]^{\!\top}=\mathbf M\,\mathbf u,\qquad
+              [F_z,\tau_x,\tau_y,\tau_z]^{\!\top}=\mathbf M\,\mathbf u,\;\;
               \mathbf x_{k+1}=f_{\mathrm{RK4}}(\mathbf x_k,\mathbf u_k)
             \]
           </div>
         </div>
+      </div>
+    </section>
 
-        <div>
-          <div class="eq-block">
-            <div class="label">4. Barrier Lyapunov (velocity-aware)</div>
-            \[
-              z(\mathbf e_p,\mathbf e_v)=\|\mathbf e_p\|^{2}+\alpha\|\mathbf e_v\|^{2},\quad
-              V(z)=\frac{z}{\delta^{2}-z}
-            \]
-            \[
-              \beta_k=\beta_{\mathrm{start}}\!\left(\tfrac{\beta_{\mathrm{end}}}{\beta_{\mathrm{start}}}\right)^{k/(N-1)},\;k=0,\dots,N{-}1
-            \]
-          </div>
+    <!-- ======================================================= Full pipeline math — part 2 -->
+    <section>
+      <span class="kicker">2 · Approach</span>
+      <h2>Full pipeline (2/2) — BLF, OCP, applied control</h2>
 
-          <div class="eq-block">
-            <div class="label">5. MPC-BLF OCP  (solved every $s$ steps)</div>
-            \[
-              \begin{aligned}
-              \min_{X,U,\sigma\ge 0}\;&\|U_0{-}\mathbf u_{\mathrm{ppo}}\|^{2}
-                +\lambda\!\!\sum_{k=1}^{N-1}\!\!\|\Delta U_k\|^{2}
-                +\rho\sigma^{2}
-                +\tfrac{w_v}{N}\!\sum_{k=1}^{N}\!\|\mathbf v_k{-}\mathbf v^{\star}_k\|^{2}\\
-              \text{s.t.}\;&\mathbf x_0=\hat{\mathbf x},\;\;\mathbf x_{k+1}=f_{\mathrm{RK4}}(\mathbf x_k,U_k)\\
-                           &\mathbf u_{\mathrm{lo}}\le U_k\le\mathbf u_{\mathrm{hi}}\\
-                           &z(\mathbf e_{p,k},\mathbf e_{v,k})\le\delta_{\mathrm{out}}^{2}\\
-                           &V(z_{k+1})\le\beta_k V(z_k)+\sigma
-              \end{aligned}
-            \]
-          </div>
+      <!-- Full-width OCP box so the long equation is never clipped -->
+      <div class="eq-block" style="margin-top: 6px;">
+        <div class="label">5. MPC-BLF OCP &nbsp;(solved every $s$ env steps, $N=7$, $dt=10$ ms)</div>
+        \[
+          \begin{aligned}
+          \min_{X,\,U,\,\sigma\ge 0}\quad
+            & \|U_0-\mathbf u_{\mathrm{ppo}}\|^{2}
+              \;+\; \lambda\!\!\sum_{k=1}^{N-1}\!\!\|\Delta U_k\|^{2}
+              \;+\; \rho\,\sigma^{2}
+              \;+\; \tfrac{w_v}{N}\!\sum_{k=1}^{N}\!\|\mathbf v_k-\mathbf v^{\star}_k\|^{2}
+              \\[4pt]
+          \text{s.t.}\quad
+            & \mathbf x_0=\hat{\mathbf x},\qquad
+              \mathbf x_{k+1}=f_{\mathrm{RK4}}(\mathbf x_k,\,U_k),\qquad
+              \mathbf u_{\mathrm{lo}}\le U_k\le\mathbf u_{\mathrm{hi}} \\[2pt]
+            & z(\mathbf e_{p,k},\mathbf e_{v,k})\le\delta_{\mathrm{out}}^{2},\qquad
+              V(z_{k+1})\le\beta_k\,V(z_k)+\sigma
+          \end{aligned}
+        \]
+        <p class="muted" style="font-size: 0.85em; margin: 4px 0 0;">
+          Decision variables $X\!\in\!\mathbb R^{12\times(N+1)}$,
+          $U\!\in\!\mathbb R^{4\times N}$,
+          $\sigma\!\in\!\mathbb R_{\ge 0}$.
+          Solved in CasADi with <b>Fatrop</b>, warm-started from the previous solution rolled forward.
+        </p>
+      </div>
 
-          <div class="eq-block">
-            <div class="label">6. Applied control</div>
-            \[
-              \mathbf a^{\mathrm{safe}}_{t}=\bigl[\mathcal M^{-1}\!\bigl(\mathrm{clip}(U^{\star}_0)\bigr),\;\mathbf a^{\mathrm{ppo}}_{t,4:7}\bigr]
-            \]
-            <p class="muted" style="font-size: 0.88em; margin: 4px 0 0;">
-              Fallback to $\mathbf a^{\mathrm{ppo}}_t$ if $z_0\ge\delta_{\mathrm{out}}^{2}$ or
-              solver fails. Between stride solves, raw PPO is applied (no ZOH).
-            </p>
-          </div>
+      <div class="cols-3" style="margin-top: 14px;">
+        <div class="eq-block">
+          <div class="label">4. Barrier Lyapunov</div>
+          \[
+            z=\|\mathbf e_p\|^{2}+\alpha\|\mathbf e_v\|^{2}
+          \]
+          \[
+            V(z)=\tfrac{z}{\delta^{2}-z}
+          \]
+          \[
+            \beta_k=\beta_{\mathrm{s}}\!\left(\tfrac{\beta_{\mathrm{e}}}{\beta_{\mathrm{s}}}\right)^{k/(N-1)}
+          \]
+        </div>
 
-          <div class="eq-block">
-            <div class="label">7. Safety guarantee (informal)</div>
-            <p style="font-size: 0.88em; margin: 0;">
-              If $\sigma=0$ along the plan,
-              $\,V(z_{k+1})\le\beta_k V(z_k)<\infty\Rightarrow z_{k+1}<\delta^{2}$
-              — the $\delta$-tube is <b>forward-invariant</b> over the horizon.
-              Measured $\sigma\!>\!0$ on $<1\%$ of steps, matching the 0% tube-violation rate.
-            </p>
-          </div>
+        <div class="eq-block">
+          <div class="label">6. Applied control</div>
+          \[
+            \mathbf a^{\mathrm{safe}}_{t}=\bigl[\mathcal M^{-1}(\mathrm{clip}\,U^{\star}_0),\;\mathbf a^{\mathrm{ppo}}_{t,4:7}\bigr]
+          \]
+          <p class="muted" style="font-size: 0.85em; margin: 2px 0 0;">
+            Fallback to raw $\mathbf a^{\mathrm{ppo}}_t$ if $z_0\!\ge\!\delta_{\mathrm{out}}^{2}$
+            or the solver fails. Between stride solves, raw PPO is applied (no ZOH).
+          </p>
+        </div>
+
+        <div class="eq-block">
+          <div class="label">7. Safety guarantee</div>
+          <p style="font-size: 0.88em; margin: 0;">
+            If $\sigma=0$, then
+            $V(z_{k+1})\le\beta_k V(z_k)<\infty$
+            $\Rightarrow z_{k+1}<\delta^{2}$ &mdash;
+            the $\delta$-tube is <b>forward-invariant</b>
+            over the horizon. Measured $\sigma\!>\!0$ on $<\!1\%$ of steps, matching
+            the 0% tube-violation rate.
+          </p>
         </div>
       </div>
     </section>
@@ -689,75 +746,143 @@
       </p>
     </section>
 
-    <!-- ======================================================= Results 1 -->
+    <!-- ======================================================= Results 1 — videos -->
     <section>
       <span class="kicker">3 · Results  ·  Trajectory tracking</span>
-      <h2>Side-by-side on the same seed, same goal</h2>
-      <div class="cols tight">
+      <h2>Same seed (0), same min-snap clip — three controllers</h2>
+      <div class="cols-3 vids">
         <div>
-          <h3>PPO only  ·  seed 0</h3>
+          <h3>PPO only</h3>
           <video src="videos/ppo/ep00_seed0.mp4" muted autoplay loop playsinline controls></video>
-          <div class="media-caption">pos RMSE <b>0.122 m</b>  ·  peak err <b>0.177 m</b>  ·  tube viol <b>29.7%</b></div>
+          <div class="media-caption">Clip: pos RMSE <b>0.122</b>, peak <b>0.177</b> m, tube viol <b>29.7%</b></div>
         </div>
         <div>
-          <h3 class="accent">PPO + MPC-BLF  ·  seed 0</h3>
+          <h3>MPC tracking, BLF off</h3>
+          <video src="videos/ppo_mpc_noblf/ep00_seed0.mp4" muted autoplay loop playsinline controls></video>
+          <div class="media-caption">Same NLP cost, no outer fence / BLF descent — faster solve, tracking gain</div>
+        </div>
+        <div>
+          <h3 class="accent">PPO + MPC + BLF</h3>
           <video src="videos/ppo_mpc_blf/ep00_seed0.mp4" muted autoplay loop playsinline controls></video>
-          <div class="media-caption">pos RMSE <b>0.062 m</b>  ·  peak err <b>0.085 m</b>  ·  tube viol <b>0.0%</b></div>
+          <div class="media-caption">Clip: pos RMSE <b>0.062</b>, peak <b>0.085</b> m, tube viol <b>0%</b></div>
         </div>
       </div>
-      <div class="stat-row" style="margin-top: 20px;">
-        <div class="stat"><div class="val">2.0×</div><div class="lab">tighter pos RMSE</div></div>
-        <div class="stat"><div class="val">2.1×</div><div class="lab">lower peak error</div></div>
-        <div class="stat"><div class="val">0%</div><div class="lab">MPC fallback</div></div>
-        <div class="stat"><div class="val">33 ms</div><div class="lab">median solve</div></div>
-      </div>
+      <p class="muted" style="margin-top: 10px; font-size: 0.72em;">
+        Note: per-episode tube viol can read 0% on lucky seeds; the aggregate 100-episode table below is the safety story.
+      </p>
     </section>
 
-    <!-- ======================================================= Results 2 -->
+    <!-- ======================================================= Results 2 — protocol + aggregate -->
     <section>
       <span class="kicker">3 · Results  ·  Trajectory tracking</span>
-      <h2>20-episode aggregate</h2>
+      <h2>Headline numbers — 5 seeds × 20 episodes = 100 deterministic runs</h2>
+      <p class="muted" style="font-size: 0.72em; margin-bottom: 8px;">
+        Seeds <code>[0, 20, 40, 60, 80]</code>, same checkpoint <code>logs/continue_7M/best_model.zip</code>.
+        Table entries: <b>mean ± std</b> over the five seed-level means ($n{=}5$).
+        Source: <code>videos/METRICS.txt</code>, <code>logs/multi_seed/summary.json</code>.
+      </p>
+      <table class="compact">
+        <tr>
+          <th>metric</th>
+          <th class="num">PPO</th>
+          <th class="num">PPO + MPC (BLF off)</th>
+          <th class="num">PPO + MPC + BLF</th>
+          <th>comment</th>
+        </tr>
+        <tr class="highlight">
+          <td>position RMSE [m]</td>
+          <td class="num">0.1413 ± 0.0038</td>
+          <td class="num">0.0808 ± 0.0041</td>
+          <td class="num"><b>0.0643 ± 0.0008</b></td>
+          <td>MPC alone −43%; +BLF another −20%</td>
+        </tr>
+        <tr class="highlight">
+          <td>velocity RMSE [m/s]</td>
+          <td class="num">0.1719 ± 0.0157</td>
+          <td class="num">0.0744 ± 0.0026</td>
+          <td class="num"><b>0.0665 ± 0.0032</b></td>
+          <td></td>
+        </tr>
+        <tr class="highlight">
+          <td>peak err [m]</td>
+          <td class="num">0.2146 ± 0.0057</td>
+          <td class="num">0.1182 ± 0.0069</td>
+          <td class="num"><b>0.0884 ± 0.0013</b></td>
+          <td></td>
+        </tr>
+        <tr class="highlight">
+          <td>tube viol &gt;12 cm</td>
+          <td class="num">53.53 ± 1.45%</td>
+          <td class="num">14.45 ± 5.21%</td>
+          <td class="num"><b>0.00 ± 0.00%</b></td>
+          <td>BLF removes residual crossings</td>
+        </tr>
+        <tr>
+          <td>median solve [ms]</td>
+          <td class="num">1.22 ± 0.07</td>
+          <td class="num">28.16 ± 0.34</td>
+          <td class="num">33.39 ± 0.28</td>
+          <td>stride = 1 (every step)</td>
+        </tr>
+        <tr>
+          <td>MPC fallback</td>
+          <td class="num">—</td>
+          <td class="num">0.00%</td>
+          <td class="num">0.00%</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>goal reach / crash</td>
+          <td class="num" colspan="3" style="text-align:center">100 / 100 goal · 0% crash (all three)</td>
+          <td>15 cm tolerance</td>
+        </tr>
+      </table>
+    </section>
+
+    <!-- ======================================================= Results 2b — plots -->
+    <section>
+      <span class="kicker">3 · Results  ·  Trajectory tracking</span>
+      <h2>Bar charts (means ± std across seeds)</h2>
       <div class="cols tight">
         <div>
-          <img src="plots/trajectory_tracking.png" class="fit" alt="trajectory tracking bar chart" />
+          <img src="plots/trajectory_tracking.png" class="fit" alt="trajectory tracking" />
         </div>
         <div>
           <img src="plots/tube_violation.png" class="fit" alt="tube violation" />
         </div>
       </div>
-      <table style="margin-top: 14px;">
-        <tr><th>metric</th><th class="num">PPO only</th><th class="num">PPO + MPC-BLF</th><th class="num">Δ</th></tr>
-        <tr class="highlight"><td>position RMSE [m]</td><td class="num">0.1443</td><td class="num"><b>0.0658</b></td><td class="num">−54.4%</td></tr>
-        <tr class="highlight"><td>velocity RMSE [m/s]</td><td class="num">0.1599</td><td class="num"><b>0.0646</b></td><td class="num">−59.6%</td></tr>
-        <tr class="highlight"><td>peak tracking error [m]</td><td class="num">0.2192</td><td class="num"><b>0.0910</b></td><td class="num">−58.5%</td></tr>
-        <tr class="highlight"><td>tube violation rate (&gt;12 cm)</td><td class="num">40.72%</td><td class="num"><b>0.00%</b></td><td class="num">−40.72 pp</td></tr>
-        <tr><td>goal reach rate (15 cm tol.)</td><td class="num">100%</td><td class="num">100%</td><td class="num">—</td></tr>
-        <tr><td>crash rate</td><td class="num">0%</td><td class="num">0%</td><td class="num">—</td></tr>
-      </table>
+      <div style="margin-top: 12px;">
+        <img src="plots/solve_cost.png" class="fit" alt="solve cost" style="max-height: 220px; object-fit: contain;" />
+        <p class="muted" style="font-size: 0.65em; margin-top: 6px;">
+          Solve times: PPO inference vs MPC (BLF off) vs MPC+BLF at stride 1. Duty cycle 100% when MPC is on.
+        </p>
+      </div>
     </section>
 
-    <!-- ======================================================= Results 3 -->
+    <!-- ======================================================= Results 3 — disturbances -->
     <section>
       <span class="kicker">3 · Results  ·  Disturbance rejection</span>
-      <h2>Arm-fold — the only regime where PPO actually crashes</h2>
-      <div class="cols tight">
+      <h2>Arm-fold (shifted COM) — OOD for PPO</h2>
+      <div class="cols-3 vids">
         <div>
           <h3>PPO only</h3>
           <video src="videos/disturbance/arm_fold_ppo.mp4" muted autoplay loop playsinline controls></video>
           <div class="media-caption">
-            Crashed at $\sim\!12$ s. Phase-3 peak deviation <b>1.45 m</b>,
-            peak vel <b>6.06 m/s</b>.
+            <b>Crash</b> $\sim\!12$ s. Phase 3 pos max <b>1.45 m</b>, vel max <b>6.1 m/s</b>.
           </div>
         </div>
         <div>
-          <h3 class="accent">PPO + MPC-BLF</h3>
+          <h3>MPC, BLF off</h3>
+          <video src="videos/disturbance/arm_fold_mpc_noblf.mp4" muted autoplay loop playsinline controls></video>
+          <div class="media-caption">Stabilises (no crash). Phase 3 pos RMSE <b>3.2 cm</b> vs <b>23.6 cm</b> PPO.</div>
+        </div>
+        <div>
+          <h3 class="accent">MPC + BLF</h3>
           <video src="videos/disturbance/arm_fold_mpc_blf.mp4" muted autoplay loop playsinline controls></video>
-          <div class="media-caption">
-            Settles <b>0.01 s</b> after disturbance ends. Peak dev <b>3.5 cm</b>, peak vel <b>5 cm/s</b>.
-          </div>
+          <div class="media-caption">Settles <b>0.01 s</b> after hold. Pos max <b>3.6 cm</b>, fallback <b>0%</b>.</div>
         </div>
       </div>
-      <img src="plots/disturbance_recovery.png" class="fit" style="margin-top: 14px;" alt="disturbance recovery" />
+      <img src="plots/disturbance_recovery.png" class="fit" style="margin-top: 10px;" alt="Phase 3 stabilize: PPO vs MPC no-BLF vs MPC+BLF" />
     </section>
 
     <!-- ======================================================= Failures / tradeoffs -->
@@ -770,8 +895,8 @@
           <h3>4a. Compute cost is real</h3>
           <img src="plots/solve_cost.png" class="fit" alt="solve cost" />
           <p class="muted" style="margin-top: 8px; font-size: 0.7em;">
-            Fatrop + stride $=\!3$ gives a 33% duty cycle and $\sim\!40$ ms median solve.
-            Stride $=\!1$ is needed for the tightest tracking, but doubles compute.
+            Trajectory eval uses stride $=\!1$ (MPC every step, $\sim\!33$ ms median for MPC+BLF).
+            Disturbance eval uses stride $=\!2$ ($\sim\!42$ ms median on those runs).
           </p>
         </div>
         <div>
@@ -827,28 +952,86 @@
       </div>
     </section>
 
-    <!-- ======================================================= Wind Bonus -->
+    <!-- ======================================================= Wind + Phase-3 summary -->
     <section>
-      <span class="kicker">3 · Results (extra)  ·  Wind gusts</span>
-      <h2>High wind: PPO blows up, MPC-BLF damps it out</h2>
-      <div class="cols tight">
+      <span class="kicker">3 · Results  ·  Wind &amp; recovery</span>
+      <h2>Wind-high (2.5 N lateral pulse) — videos</h2>
+      <div class="cols-3 vids">
         <div>
-          <h3>PPO  ·  wind-high (2.5 N pulse)</h3>
+          <h3>PPO</h3>
           <video src="videos/disturbance/wind_high_ppo.mp4" muted autoplay loop playsinline controls></video>
-          <div class="media-caption">Phase-3 peak <b>52 cm</b>, peak vel <b>2.14 m/s</b>, never settles.</div>
+          <div class="media-caption">Phase 3 pos max <b>52 cm</b>, vel max <b>2.14 m/s</b> — does not settle.</div>
         </div>
         <div>
-          <h3 class="accent">PPO + MPC-BLF  ·  wind-high</h3>
+          <h3>MPC, BLF off</h3>
+          <video src="videos/disturbance/wind_high_mpc_noblf.mp4" muted autoplay loop playsinline controls></video>
+          <div class="media-caption">Better than PPO; still stuck $\sim\!5.9$ cm RMSE (settle test fails).</div>
+        </div>
+        <div>
+          <h3 class="accent">MPC + BLF</h3>
           <video src="videos/disturbance/wind_high_mpc_blf.mp4" muted autoplay loop playsinline controls></video>
-          <div class="media-caption">Settles <b>0.87 s</b> after pulse ends, peak <b>7 cm</b>.</div>
+          <div class="media-caption">Settles <b>0.87 s</b> after pulse; pos max <b>7.5 cm</b>, fallback 0.6%.</div>
         </div>
       </div>
-      <table style="margin-top: 14px;">
-        <tr><th>mode</th><th class="num">Δ pos max (PPO)</th><th class="num">Δ pos max (MPC-BLF)</th><th class="num">settle &lt; 10 s</th><th class="num">crash</th></tr>
-        <tr><td>wind-low</td><td class="num">0.0715</td><td class="num">0.0565</td><td>yes (8.97 s)</td><td>no / no</td></tr>
-        <tr class="highlight"><td>wind-high</td><td class="num">0.5231</td><td class="num"><b>0.0746</b></td><td>no → yes (0.87 s)</td><td>no / no</td></tr>
-        <tr class="bad"><td>arm-fold</td><td class="num">1.4479</td><td class="num"><b>0.0355</b></td><td>— → yes (0.01 s)</td><td><b>YES</b> / no</td></tr>
+    </section>
+
+    <section>
+      <span class="kicker">3 · Results  ·  Phase 3 summary</span>
+      <h2>Stabilise phase after disturbance ends (seed 0)</h2>
+      <p class="muted" style="font-size: 0.72em;">Settling = position error &lt; 5 cm for ≥ 0.5 s. All three use the same PPO checkpoint.</p>
+      <table class="compact">
+        <tr>
+          <th>mode</th>
+          <th class="num">pos RMSE PPO</th>
+          <th class="num">no-BLF</th>
+          <th class="num">+BLF</th>
+          <th class="num">pos max PPO</th>
+          <th class="num">no-BLF</th>
+          <th class="num">+BLF</th>
+          <th>settle &lt;10 s</th>
+          <th>crash</th>
+        </tr>
+        <tr>
+          <td>wind-low</td>
+          <td class="num">0.0563</td><td class="num">0.0579</td><td class="num"><b>0.0526</b></td>
+          <td class="num">0.0715</td><td class="num">0.0629</td><td class="num"><b>0.0565</b></td>
+          <td>no / no / <b>yes</b> (8.97 s)</td>
+          <td>no / no / no</td>
+        </tr>
+        <tr class="highlight">
+          <td>wind-high</td>
+          <td class="num">0.1379</td><td class="num">0.0589</td><td class="num"><b>0.0471</b></td>
+          <td class="num">0.5231</td><td class="num">0.0784</td><td class="num"><b>0.0746</b></td>
+          <td>no / no / <b>yes</b> (0.87 s)</td>
+          <td>no / no / no</td>
+        </tr>
+        <tr class="bad">
+          <td>arm-fold</td>
+          <td class="num">0.2360</td><td class="num">0.0322</td><td class="num"><b>0.0309</b></td>
+          <td class="num">1.4479</td><td class="num">0.0374</td><td class="num"><b>0.0355</b></td>
+          <td>— / yes (0.01 s) / yes (0.01 s)</td>
+          <td><b>YES</b> / no / no</td>
+        </tr>
       </table>
+      <p class="muted" style="font-size: 0.68em; margin-top: 8px;">
+        Wind-low: MPC and BLF are similarly good (BLF is rarely active). Wind-high: BLF is what passes the 5 cm band.
+        Full phase logs in <code>videos/METRICS.txt</code> §2–3.
+      </p>
+    </section>
+
+    <!-- ======================================================= Training curves (optional) -->
+    <section>
+      <span class="kicker">3 · Results  ·  Training</span>
+      <h2>PPO learning curves (5 M + 2 M fine-tune, SB3)</h2>
+      <p class="muted" style="font-size: 0.72em;">Exported from TensorBoard / training logs — same policy as eval.</p>
+      <div class="cols tight">
+        <div>
+          <img src="plots/training_reward.png" class="fit" alt="training reward" style="max-height: 240px; object-fit: contain;" />
+        </div>
+        <div>
+          <img src="plots/training_ep_len.png" class="fit" alt="episode length" style="max-height: 240px; object-fit: contain;" />
+        </div>
+      </div>
     </section>
 
     <!-- ======================================================= Anything else -->
@@ -895,9 +1078,12 @@
     controlsTutorial: false,
     transition: "none",
     backgroundTransition: "none",
-    width:  1280,
-    height: 800,
-    margin: 0.04,
+    width:  1440,
+    height: 900,
+    margin: 0.02,
+    center: false,
+    // Allow within-slide scroll wheel even while MathJax / videos have focus.
+    mouseWheel: false,
     plugins: [RevealHighlight]
   });
 </script>

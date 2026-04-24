@@ -192,42 +192,44 @@ def plot_tube_violation():
 
 def plot_disturbance_recovery():
     modes = ["wind-low", "wind-high", "arm-fold"]
+    # Phase 3 stabilize — PPO / MPC (no BLF) / MPC+BLF  (videos/METRICS.txt §3)
     pos_rmse_ppo = [0.0563, 0.1379, 0.2360]
-    pos_rmse_mpc = [0.0526, 0.0471, 0.0309]
+    pos_rmse_noblf = [0.0579, 0.0589, 0.0322]
+    pos_rmse_blf = [0.0526, 0.0471, 0.0309]
     pos_max_ppo = [0.0715, 0.5231, 1.4479]
-    pos_max_mpc = [0.0565, 0.0746, 0.0355]
+    pos_max_noblf = [0.0629, 0.0784, 0.0374]
+    pos_max_blf = [0.0565, 0.0746, 0.0355]
 
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4.6))
+    fig, axes = plt.subplots(1, 2, figsize=(13.5, 4.8))
 
-    def paired(ax, ppo, mpc, title, ylabel, logscale=False):
+    def triple(ax, a, b, c, title, ylabel, logscale=False):
         x = np.arange(len(modes))
-        w = 0.38
-        ax.bar(x - w / 2, ppo, w, label="PPO", color=PPO_COLOR)
-        ax.bar(x + w / 2, mpc, w, label="PPO + MPC-BLF", color=MPC_COLOR)
-        for i, (p, m) in enumerate(zip(ppo, mpc)):
-            ax.annotate(f"{p:.2f}", xy=(i - w / 2, p),
-                        xytext=(0, 3), textcoords="offset points",
-                        ha="center", fontsize=9, color=PPO_COLOR)
-            ax.annotate(f"{m:.2f}", xy=(i + w / 2, m),
-                        xytext=(0, 3), textcoords="offset points",
-                        ha="center", fontsize=9, color=MPC_COLOR)
+        n_ser = 3
+        w = 0.78 / n_ser
+        offsets = (np.arange(n_ser) - (n_ser - 1) / 2.0) * w
+        for vals, lab, col, off in zip(
+                [a, b, c],
+                ["PPO", "PPO + MPC (BLF off)", "PPO + MPC + BLF"],
+                [PPO_COLOR, NOBLF_COLOR, MPC_COLOR],
+                offsets):
+            ax.bar(x + off, vals, w, label=lab, color=col)
         ax.set_xticks(x, modes)
         ax.set_ylabel(ylabel)
         ax.set_title(title, loc="left", pad=10)
-        ax.legend(frameon=False, loc="upper left")
+        ax.legend(frameon=False, loc="upper left", fontsize=8)
         if logscale:
             ax.set_yscale("log")
 
-    paired(axes[0], pos_rmse_ppo, pos_rmse_mpc,
+    triple(axes[0], pos_rmse_ppo, pos_rmse_noblf, pos_rmse_blf,
            "Phase 3 stabilize  —  position RMSE [m]",
            "position RMSE [m]")
-    paired(axes[1], pos_max_ppo, pos_max_mpc,
+    triple(axes[1], pos_max_ppo, pos_max_noblf, pos_max_blf,
            "Phase 3 stabilize  —  peak deviation [m]  (log scale)",
            "peak deviation [m]",
            logscale=True)
-    fig.suptitle("Disturbance rejection after the pulse / arm-fold ends",
-                 x=0.02, ha="left", fontsize=14, fontweight="bold")
-    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    fig.suptitle("Disturbance rejection (Phase 3)  —  same checkpoint, seed 0",
+                 x=0.02, ha="left", fontsize=13, fontweight="bold")
+    fig.tight_layout(rect=(0, 0, 1, 0.92))
     fig.savefig(os.path.join(HERE, "disturbance_recovery.png"),
                 bbox_inches="tight")
     plt.close(fig)
